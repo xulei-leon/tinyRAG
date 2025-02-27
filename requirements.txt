@@ -1,4 +1,3 @@
-notebook
 tavily-python
 wikipedia
 trustcall
