@@ -11,8 +11,10 @@ langchain
 langchain-core
 langchain-community
 langchain-openai
+langchain-deepseek
 langchain-text-splitters 
 langchain-chroma
+langchain-huggingface
 langgraph
 langgraph-sdk
 langgraph-checkpoint-sqlite
