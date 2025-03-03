@@ -16,6 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Install other libraries
 RUN pip install --no-cache-dir jupyterlab
+RUN pip install --no-cache-dir ipywidgets
 
 # Define environment variable
 
