@@ -15,6 +15,7 @@ langchain-deepseek
 langchain-text-splitters 
 langchain-chroma
 langchain-huggingface
+langchain-linkup
 langgraph
 langgraph-sdk
 langgraph-checkpoint-sqlite
