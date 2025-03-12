@@ -1,7 +1,9 @@
-version: "3.12.9"
 services:
-  gradio-app:
-    build: .
+  crag-app:
+    image: crag-app:latest
+    build:
+      context: .
+      dockerfile: crag.dockerfile
     ports:
       - "7860:7860"
     volumes:
