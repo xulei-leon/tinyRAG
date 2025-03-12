@@ -1,0 +1,12 @@
+version: "3.12.9"
+services:
+  gradio-app:
+    build: .
+    ports:
+      - "7860:7860"
+    volumes:
+      - .:/app
+    environment:
+      - GRADIO_LISTEN=true
+      - GRADIO_SERVER_PORT=7860
+      - GRADIO_SERVER_NAME=0.0.0.0
