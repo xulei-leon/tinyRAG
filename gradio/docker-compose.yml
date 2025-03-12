@@ -1,9 +1,9 @@
 services:
   crag-app:
-    image: crag-app:latest
+    image: gradio-app:latest
     build:
       context: .
-      dockerfile: crag.dockerfile
+      dockerfile: Dockerfile
     ports:
       - "7860:7860"
     volumes:

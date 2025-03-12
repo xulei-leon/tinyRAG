@@ -22,7 +22,8 @@ Open web brower and input: http://127.0.0.1:8888/lab/tree/notebook
 ### Build docker compose image
 
 <pre><code class="shell">
-$ docker compose -f gradio/crag-docker-compose.yml build
+$ cd gradio
+$ docker compose build
 
 $ docker image ls
 REPOSITORY            TAG                    IMAGE ID       CREATED         SIZE
