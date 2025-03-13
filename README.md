@@ -26,18 +26,18 @@ $ cd gradio
 $ docker compose build
 
 $ docker image ls
-REPOSITORY            TAG                    IMAGE ID       CREATED         SIZE
-crag-app              latest                 4c2c91cfc18d   2 hours ago     1.58GB
+REPOSITORY         TAG                    IMAGE ID       CREATED              SIZE
+gradio-app         latest                 a42822ef3991   5 minutes ago   6.87GB
 </code></pre>
 
 ### Run docker compose image
 
 <pre><code class="shell">
-$ docker compose -f gradio/crag-docker-compose.yml up -d
+$ docker compose up -d
 
-$ docker compose -f gradio/crag-docker-compose.yml ps     
+$ docker compose ps
 NAME                IMAGE             COMMAND                   SERVICE    CREATED         STATUS          PORTS
-gradio-crag-app-1   crag-app:latest   "python crag.py --li…"   crag-app   3 minutes ago   Up 17 seconds   0.0.0.0:7860->7860/tcp
+gradio-crag-app-1   gradio-app:latest   "python web-app.py -…"   crag-app   50 seconds ago   Up 47 seconds   0.0.0.0:7860->7860/tcp
 </code></pre>
  
 
@@ -45,3 +45,8 @@ gradio-crag-app-1   crag-app:latest   "python crag.py --li…"   crag-app   3 mi
 
 Open web brower and input: http://127.0.0.1/7860
 
+### Debug login as bash
+
+<pre><code class="shell">
+$ docker exec -it gradio-crag-app-1 bash
+</code></pre>

@@ -36,8 +36,9 @@ RUN pip install --no-cache-dir unstructured
 
 # Install other libraries
 RUN pip install --no-cache-dir llama-index
-RUN pip install --no-cache-dir langchain-huggingface
+RUN pip install --no-cache-dir sentence-transformers
 RUN pip install --no-cache-dir gradio
+RUN pip install --no-cache-dir langchain-huggingface
 
 # Define environment variable
 
@@ -48,7 +49,7 @@ RUN pip install --no-cache-dir gradio
 EXPOSE 7860
 
 # Run bash for debug
-CMD ["bash"]
+#CMD ["bash"]
 
 # Run app when the container launches
-#CMD ["python", "web-app.py", "--listen", "--server-port", "7860", "--server-name", "0.0.0.0"]
+CMD ["python", "web-app.py", "--listen", "--server-port", "7860", "--server-name", "0.0.0.0"]
