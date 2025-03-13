@@ -10,8 +10,7 @@ ENV PYTHONUNBUFFERED=1
 # Set the working directory in the container
 WORKDIR /app
 
-# Install other libraries
-RUN pip install --no-cache-dir gradio
+# Install libraries
 RUN pip install --no-cache-dir langchain
 RUN pip install --no-cache-dir langchain-core
 RUN pip install --no-cache-dir langchain-community
@@ -19,7 +18,6 @@ RUN pip install --no-cache-dir langchain-openai
 RUN pip install --no-cache-dir langchain-deepseek
 RUN pip install --no-cache-dir langchain-text-splitters 
 RUN pip install --no-cache-dir langchain-chroma
-RUN pip install --no-cache-dir langchain-huggingface
 RUN pip install --no-cache-dir langchain-linkup
 RUN pip install --no-cache-dir langgraph
 RUN pip install --no-cache-dir langgraph-sdk
@@ -36,6 +34,11 @@ RUN pip install --no-cache-dir pypdf
 RUN pip install --no-cache-dir python-magic
 RUN pip install --no-cache-dir unstructured
 
+# Install other libraries
+RUN pip install --no-cache-dir llama-index
+RUN pip install --no-cache-dir langchain-huggingface
+RUN pip install --no-cache-dir gradio
+
 # Define environment variable
 
 # Copy the current directory contents into the container at /app
@@ -44,5 +47,8 @@ RUN pip install --no-cache-dir unstructured
 # Make port available to the world outside this container
 EXPOSE 7860
 
-# Run Jupyter Notebook when the container launches
-CMD ["python", "web-app.py", "--listen", "--server-port", "7860", "--server-name", "0.0.0.0"]
+# Run bash for debug
+CMD ["bash"]
+
+# Run app when the container launches
+#CMD ["python", "web-app.py", "--listen", "--server-port", "7860", "--server-name", "0.0.0.0"]
