@@ -7,26 +7,20 @@ import chromadb
 from chromadb.config import Settings
 from pydantic import BaseModel, Field, validator
 
-from langchain import PromptTemplate, LLMChain
 from langchain import hub
+from langchain.chains import LLMChain
 from langchain_openai import ChatOpenAI
 from langchain_deepseek import ChatDeepSeek
 from langchain_core.tools import tool
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
-from langchain_core.runnables import (
-    Runnable,
-    RunnableLambda,
-    RunnablePassthrough,
-    RunnableSerializable,
-)
+from langchain_core.runnables import Runnable, RunnableLambda, RunnablePassthrough, RunnableSerializable
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_chroma import Chroma
 from langchain_text_splitters import TokenTextSplitter
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.document_loaders import DirectoryLoader
-from langchain_community.document_loaders import UnstructuredHTMLLoader
+from langchain_community.document_loaders import DirectoryLoader, UnstructuredHTMLLoader
 from langchain.schema import Document
 from langchain_community.retrievers import TavilySearchAPIRetriever
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -69,8 +63,8 @@ silicon_base_url = None
 silicon_llm_model = None
 huggingface_embed_model = None
 
-config_data = load_config("../config/config.toml")
-if config_data:
+try:
+    config_data = load_config("config.toml")
     log_level = config_data.get("log_level")
     if log_level:
         logging.basicConfig(level=log_level)
@@ -86,24 +80,24 @@ if config_data:
 
     # huggingface
     huggingface_embed_model = config_data.get("huggingface", {}).get("embed_model")
+except:
+    # deepseek
+    deepseek_llm_model = deepseek_llm_model or "deepseek-chat"
+    deepseek_llm_temperature = 0.5
+    deepseek_llm_max_tokens = None
 
+    # silicon
+    silicon_base_url = silicon_base_url or "https://api.siliconflow.cn/v1"
+    silicon_llm_model = silicon_llm_model or "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
 
-# deepseek
-deepseek_llm_model = deepseek_llm_model or "deepseek-chat"
+    # huggingface
+    huggingface_embed_model="sentence-transformers/all-MiniLM-L6-v2"
 
-# silicon
-silicon_base_url = silicon_base_url or "https://api.siliconflow.cn/v1"
-silicon_llm_model = silicon_llm_model or "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
-
-# huggingface
-huggingface_embed_model = (
-    huggingface_embed_model or "sentence-transformers/all-MiniLM-L6-v2"
-)
 
 # init LLM mod
 llm_deepseek = ChatDeepSeek(
     model=deepseek_llm_model,
-    temperature=deepseek_llm_temperature or 0.3,
+    temperature=deepseek_llm_temperature,
     max_tokens=deepseek_llm_max_tokens,
     timeout=None,
     top_p=0.9,
@@ -197,7 +191,7 @@ def node_generate(state: RagState) -> RagState:
     web_searchs = state.get("web_searchs", None)
 
     # generation
-    generation = ""
+    generation = "This is the answer!"
 
     updated_state = state.copy()
     updated_state.update({"answer":generation})
@@ -281,3 +275,9 @@ def rag_graph_init() -> StateGraph:
 ################################################################################
 rag_graph = rag_graph_init()
 rag_app = rag_graph.compile()
+
+################################################################################
+### Display Graph
+### MUST install: pip install grandalf
+################################################################################
+#print(rag_app.get_graph().draw_ascii())

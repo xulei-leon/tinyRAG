@@ -1,15 +1,30 @@
 import gradio as gr
+from crag_graph import rag_app
 
-def greet(name):
-    # import pdb; pdb.set_trace() # Uncomment to set a pdb breakpoint
-    return "Hello " + name + "!"
+# Define a function to run the conversation
+def run_conversation(user_input, chat_history):
+    inputs = {"question": user_input}
+    response = rag_app.invoke(inputs)
 
-iface = gr.Interface(
-    fn=greet,
-    inputs=gr.Textbox(label="Name"),
-    outputs=gr.Textbox(label="Greeting"),
-    title="Gradio CRAG Agent",
-    description="A gradio CRAG app",
-)
+    ai_response = response["answer"]
 
-iface.launch(server_name="0.0.0.0", server_port=7860)
+    chat_history.append((user_input, ai_response)) 
+    return "", chat_history
+
+# Create a Gradio interface
+with gr.Blocks() as demo:
+    gr.Markdown("# LangGraph Chat Demo")
+    chatbot = gr.Chatbot()
+    msg = gr.Textbox()
+    clear = gr.Button("Clear")
+
+    msg.submit(
+        run_conversation,
+        [msg, chatbot],
+        [msg, chatbot]
+    )
+    clear.click(lambda: None, None, chatbot, queue=False)
+
+# Launch the interface
+if __name__ == "__main__":
+    demo.launch()

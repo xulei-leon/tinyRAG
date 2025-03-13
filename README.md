@@ -38,8 +38,9 @@ $ docker compose up -d
 $ docker compose ps
 NAME                IMAGE             COMMAND                   SERVICE    CREATED         STATUS          PORTS
 gradio-crag-app-1   gradio-app:latest   "python web-app.py -…"   crag-app   50 seconds ago   Up 47 seconds   0.0.0.0:7860->7860/tcp
+
+$ docker compose restart crag-app
 </code></pre>
- 
 
 ### Rradio CRAG app
 
