@@ -5,7 +5,8 @@ Some sample code to help you learn about LangChain and LangGraph for building AI
 ### Build docker
 
 <pre><code class="shell">
-docker build -t langchain:0.3 -f ./notebook/jupyter.dockerfile .
+$ cd notebook
+$ docker build -t langchain:latest .
 </code></pre>
 
 ### Run docker
