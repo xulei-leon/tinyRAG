@@ -12,6 +12,7 @@ WORKDIR /app
 
 # Install libraries
 RUN pip install --no-cache-dir langchain
+RUN pip install --no-cache-dir langchain-huggingface
 RUN pip install --no-cache-dir langchain-core
 RUN pip install --no-cache-dir langchain-community
 RUN pip install --no-cache-dir langchain-openai
@@ -27,7 +28,6 @@ RUN pip install --no-cache-dir langsmith
 RUN pip install --no-cache-dir tavily-python
 RUN pip install --no-cache-dir wikipedia
 RUN pip install --no-cache-dir trustcall
-RUN pip install --no-cache-dir chromadb
 RUN pip install --no-cache-dir requests
 RUN pip install --no-cache-dir beautifulsoup4
 RUN pip install --no-cache-dir pypdf
@@ -35,10 +35,22 @@ RUN pip install --no-cache-dir python-magic
 RUN pip install --no-cache-dir unstructured
 
 # Install other libraries
-RUN pip install --no-cache-dir llama-index
-RUN pip install --no-cache-dir sentence-transformers
 RUN pip install --no-cache-dir gradio
-RUN pip install --no-cache-dir langchain-huggingface
+
+
+# Install nltk
+RUN pip install nltk
+RUN python -m nltk.downloader punkt_tab
+RUN python -m nltk.downloader averaged_perceptron_tagger_eng
+
+
+# Install Hugging Face model
+RUN pip install --no-cache-dir huggingface-hub
+RUN pip install --no-cache-dir sentence-transformers
+ENV HF_HOME=/models
+RUN python -c "from huggingface_hub import snapshot_download; \
+    snapshot_download(repo_id='BAAI/bge-small-zh-v1.5', \
+    local_dir='$HF_HOME/BAAI/bge-small-zh-v1.5')"
 
 # Define environment variable
 

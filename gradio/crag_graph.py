@@ -45,53 +45,17 @@ linkup_api_key = os.getenv("LINKUP_API_KEY")
 # config
 #
 import tomllib
+with open("config.toml", "rb") as f:
+    config_data = tomllib.load(f)
 
+log_level = config_data.get("log_level")
+if log_level:
+    logging.basicConfig(level=log_level)
 
-def load_config(config_file):
-    try:
-        with open(config_file, "rb") as f:
-            config = tomllib.load(f)
-            return config
-    except Exception as e:
-        print(f"Load config file error: {e}")
-        return None
-
-
-# load config file
-deepseek_llm_model = None
-silicon_base_url = None
-silicon_llm_model = None
-huggingface_embed_model = None
-
-try:
-    config_data = load_config("config.toml")
-    log_level = config_data.get("log_level")
-    if log_level:
-        logging.basicConfig(level=log_level)
-
-    # deepseek
-    deepseek_llm_model = config_data.get("deepseek", {}).get("model")
-    deepseek_llm_temperature = config_data.get("deepseek", {}).get("temperature")
-    deepseek_llm_max_tokens = config_data.get("deepseek", {}).get("max_tokens")
-
-    # silicon
-    silicon_base_url = config_data.get("silicon", {}).get("base_url")
-    silicon_llm_model = config_data.get("silicon", {}).get("model")
-
-    # huggingface
-    huggingface_embed_model = config_data.get("huggingface", {}).get("embed_model")
-except:
-    # deepseek
-    deepseek_llm_model = deepseek_llm_model or "deepseek-chat"
-    deepseek_llm_temperature = 0.5
-    deepseek_llm_max_tokens = None
-
-    # silicon
-    silicon_base_url = silicon_base_url or "https://api.siliconflow.cn/v1"
-    silicon_llm_model = silicon_llm_model or "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
-
-    # huggingface
-    huggingface_embed_model="sentence-transformers/all-MiniLM-L6-v2"
+# deepseek
+deepseek_llm_model = config_data.get("deepseek", {}).get("model")
+deepseek_llm_temperature = config_data.get("deepseek", {}).get("temperature")
+deepseek_llm_max_tokens = config_data.get("deepseek", {}).get("max_tokens")
 
 
 # init LLM mod

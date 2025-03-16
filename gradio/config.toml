@@ -12,4 +12,6 @@ base_url = "https://api.siliconflow.cn/v1"
 model = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
 
 [huggingface]
-embed_model = "sentence-transformers/all-MiniLM-L6-v2"
+#embed_model = "sentence-transformers/all-MiniLM-L6-v2"
+embed_model = "BAAI/bge-small-zh-v1.5"
+local_model_path = "/models/BAAI/bge-small-zh-v1.5"
