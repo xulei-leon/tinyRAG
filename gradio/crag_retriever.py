@@ -27,8 +27,10 @@ class CragRetriever:
         persist_directory: str = "vector_store",
     ):
         os.makedirs(persist_directory, exist_ok=True)
+        os.environ["TRANSFORMERS_OFFLINE"] = "1" # to avoid downloading models
+        os.environ["HF_DATASETS_OFFLINE"] = "1" # to avoid downloading datasets
 
-        self.batch_size = 100
+        self.batch_size = 10
         self.embeddings = HuggingFaceEmbeddings(
             model_name=model_name,
             model_kwargs={"device": "cpu"},
@@ -102,11 +104,13 @@ class CragRetriever:
                 silent_errors=True,
             )
             documents = loader.load()
+            print(f"Loaded {len(documents)} documents.")
         except Exception as e:
             print(f"Load {files_directory} error.")
 
         all_splits = self.text_splitter.split_documents(documents)
         self.vector_store.add_documents(documents=all_splits)
+        print(f"Added {len(all_splits)} document splits to the vector store.")
 
     # query vector store
     def query(self, query: str, top_k: int = 1):
@@ -121,7 +125,7 @@ if __name__ == "__main__":
 
     with open("config.toml", "rb") as f:
         config_data = tomllib.load(f)
-        model_name = config_data.get("huggingface", {}).get("local_model_path")
+        model_name = config_data.get("huggingface", {}).get("embed_model")
 
     root_path = "./var"
     files_directory = os.path.join(root_path, "files")
