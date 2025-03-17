@@ -27,8 +27,8 @@ class CragRetriever:
         persist_directory: str = "vector_store",
     ):
         os.makedirs(persist_directory, exist_ok=True)
-        os.environ["TRANSFORMERS_OFFLINE"] = "1" # to avoid downloading models
-        os.environ["HF_DATASETS_OFFLINE"] = "1" # to avoid downloading datasets
+        os.environ["TRANSFORMERS_OFFLINE"] = "1"  # to avoid downloading models
+        os.environ["HF_DATASETS_OFFLINE"] = "1"  # to avoid downloading datasets
 
         self.batch_size = 10
         self.embeddings = HuggingFaceEmbeddings(
@@ -119,10 +119,43 @@ class CragRetriever:
         return self.retriever.invoke(query, top_k=top_k)
 
 
-# Example usage:
-if __name__ == "__main__":
-    print("=== test ===")
+import argparse
 
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        prog="app.py",
+        description="CRAG command",
+        epilog="Example:\n"
+        "  create: app.py --create ./files\n"
+        "  query: app.py --query 'My question?'",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        "-c", "--create", metavar="PATH", help="Create veator from files"
+    )
+    group.add_argument("-q", "--query", metavar="QUESTION", help="Query")
+
+    args = parser.parse_args()
+    if args.create:
+        if not os.path.isdir(args.create):
+            parser.error(f"Do not exist: {args.create}")
+
+    return args
+
+
+def main():
+    try:
+        args = parse_args()
+    except KeyboardInterrupt:
+        print("\nError: KeyboardInterrupt")
+        sys.exit(130)
+    except Exception as e:
+        sys.exit(2)
+
+    print("=== Init config ===")
     with open("config.toml", "rb") as f:
         config_data = tomllib.load(f)
         model_name = config_data.get("huggingface", {}).get("embed_model")
@@ -135,21 +168,32 @@ if __name__ == "__main__":
     print(f"files_directory: {files_directory}")
     print(f"persist_directory: {persist_directory}")
 
-
     print("=== Init retriever ===")
     retriever = CragRetriever(
         model_name=model_name,
         persist_directory=persist_directory,
     )
 
-    print("=== Create retriever ===")
-    retriever.create_vector(files_directory=files_directory)
+    if args.create:
+        print("=== Create retriever ===")
+        retriever.create_vector(files_directory=args.create)
+    elif args.query:
+        print("=== Query retriever ===")
+        query = args.query.encode("utf-8").decode("utf-8")
+        print(f"Question: {query}\n")
 
-    print("=== Query retriever ===")
-    query = "What are the Alpha Hope?"
-    results = retriever.query(query, top_k=3)
-    #print("Query results:", results)
-    for doc in results:
-        print(" = retrieve document =")
-        print(doc.page_content)
-        print("\n")
+        results = retriever.query(query, top_k=3)
+        if not results:
+            print("=== No results ===")
+            return
+
+        for doc in results:
+            print(" = Answer =")
+            print(doc.page_content)
+            print("\n")
+    else:
+        print("=== No action ===")
+
+
+if __name__ == "__main__":
+    main()
