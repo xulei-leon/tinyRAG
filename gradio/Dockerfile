@@ -1,3 +1,19 @@
+FROM python:3.12.9-slim-bookworm AS builder
+
+# Predownload the model to the /models directory
+WORKDIR /models
+RUN pip install huggingface-hub && \
+    python -c "from huggingface_hub import snapshot_download; \
+    snapshot_download(repo_id='BAAI/bge-small-zh-v1.5', \
+    local_dir='BAAI/bge-small-zh-v1.5', \
+    local_dir_use_symlinks=False)"
+
+# Predownload nltk data to the /nltk_data directory
+RUN pip install nltk && \
+    mkdir -p /nltk_data && \
+    python -c "import nltk; nltk.download('punkt', download_dir='/nltk_data')" && \
+    python -c "import nltk; nltk.download('averaged_perceptron_tagger', download_dir='/nltk_data')"
+
 # Use an official Python runtime as a parent image
 FROM python:3.12.9-slim-bookworm
 
@@ -12,7 +28,6 @@ WORKDIR /app
 
 # Install libraries
 RUN pip install --no-cache-dir langchain
-RUN pip install --no-cache-dir langchain-huggingface
 RUN pip install --no-cache-dir langchain-core
 RUN pip install --no-cache-dir langchain-community
 RUN pip install --no-cache-dir langchain-openai
@@ -37,22 +52,31 @@ RUN pip install --no-cache-dir unstructured
 # Install other libraries
 RUN pip install --no-cache-dir gradio
 
-
-# Install nltk
-RUN pip install nltk
-RUN python -m nltk.downloader punkt_tab
-RUN python -m nltk.downloader averaged_perceptron_tagger_eng
-
-
 # Install Hugging Face model
-RUN pip install --no-cache-dir huggingface-hub
-RUN pip install --no-cache-dir sentence-transformers
-ENV HF_HOME=/models
-RUN python -c "from huggingface_hub import snapshot_download; \
-    snapshot_download(repo_id='BAAI/bge-small-zh-v1.5', \
-    local_dir='$HF_HOME/BAAI/bge-small-zh-v1.5')"
+RUN pip install --no-cache-dir torch==2.6.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir sentence-transformers --no-deps && \
+    pip install --no-cache-dir transformers tqdm scikit-learn numpy && \
+    pip install --no-cache-dir langchain-huggingface --no-deps
+
+COPY ./debian.sources /etc/apt/sources.list.d/debian.sources
+RUN apt-get update
+RUN apt-get install -y libmagic1
 
 # Define environment variable
+ENV TRANSFORMERS_OFFLINE=1
+ENV HF_DATASETS_OFFLINE=1
+ENV NLTK_DATA=/nltk_data
+
+# Copy the models from the previous image
+COPY --from=builder /models /models
+# Copy the nltk_data from the previous image
+COPY --from=builder /nltk_data /nltk_data
+COPY ./var/nltk_data /tmp/nltk_data
+RUN if [ -z "$(ls -A /nltk_data)" ]; then \
+        mv /tmp/nltk_data /; \
+    else \
+        rm -rf /tmp/nltk_data; \
+    fi
 
 # Copy the current directory contents into the container at /app
 #COPY . /app
