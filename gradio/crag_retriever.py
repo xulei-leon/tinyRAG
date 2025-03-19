@@ -1,23 +1,18 @@
 import os
+import os
+import sys
+import argparse
 import tomllib
-from tqdm import tqdm
+
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.vectorstores.base import VectorStore
 from langchain_chroma import Chroma
 from chromadb.config import Settings as ChromaSettings
 from langchain_community.document_loaders import (
-    TextLoader,
     DirectoryLoader,
-    UnstructuredHTMLLoader,
-    UnstructuredPDFLoader,
-    UnstructuredWordDocumentLoader,
-    UnstructuredExcelLoader,
-    UnstructuredPowerPointLoader,
-    UnstructuredMarkdownLoader,
     UnstructuredFileLoader,
 )
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_core.documents import Document
 
 
 class CragRetriever:
@@ -28,65 +23,18 @@ class CragRetriever:
     ):
         os.makedirs(persist_directory, exist_ok=True)
         os.environ["TRANSFORMERS_OFFLINE"] = "1"  # to avoid downloading models
-        os.environ["HF_DATASETS_OFFLINE"] = "1"  # to avoid downloading datasets
+        # to avoid downloading datasets
+        os.environ["HF_DATASETS_OFFLINE"] = "1"
 
         self.batch_size = 10
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name=model_name,
-            model_kwargs={"device": "cpu"},
-            encode_kwargs={
-                "batch_size": self.batch_size,
-                "convert_to_numpy": True,
-                "device": "cpu",
-            },
-        )
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
-            chunk_overlap=100,
-            separators=[
-                "\n\n",
-                "\n",
-                ".",
-                "!",
-                "?",
-                ";",
-                ":",
-                "\t",
-                "\r\n",
-                "\r",
-                "，",
-                "。",
-                "！",
-                "？",
-                "；",
-                "：",
-            ],
-        )
-
-        self.vector_store: VectorStore = Chroma(
-            embedding_function=self.embeddings,
-            persist_directory=persist_directory,
-            collection_name="calerie-health",
-            client_settings=ChromaSettings(
-                anonymized_telemetry=False,  # reduce the memory usage
-                allow_reset=False,  # prevent accidental deletion of the vector store
-            ),
-        )
-
-        self.retriever = self.vector_store.as_retriever(
-            search_type="mmr",
-            search_kwargs={
-                "k": 3,  # number of results to return
-                "lambda_mult": 0.7,  # lambda value for MMR
-                "score_threshold": 0.3,  # similarity threshold
-                # "filter": {"my_key": "my_value"}, # filter the results based on a key-value pair
-            },
-        )
+        self.embeddings = self.__init_embedder(model_name)
+        self.text_splitter = self.__init_text_splitter()
+        self.vector_store = self.__init_vector_store(persist_directory)
+        self.retriever = self.__init_retriever()
 
     # create vector store
-    def create_vector(self, files_directory: str):
+    def build_index(self, files_directory: str):
         """Add all files from a given path to the vector store using DirectoryLoader."""
-
         try:
             loader = DirectoryLoader(
                 files_directory,
@@ -118,13 +66,71 @@ class CragRetriever:
         # return self.vector_store.query(query, top_k=top_k)
         return self.retriever.invoke(query, top_k=top_k)
 
+    ###############################################################################
+    # Internal functions
+    ###############################################################################
+    def __init_embedder(self, model_name: str):
+        return HuggingFaceEmbeddings(
+            model_name=model_name,
+            model_kwargs={"device": "cpu"},
+            encode_kwargs={
+                "batch_size": self.batch_size,
+                "convert_to_numpy": True,
+                "device": "cpu",
+            },
+        )
 
-import argparse
+    def __init_text_splitter(self):
+        return RecursiveCharacterTextSplitter(
+            chunk_size=500,
+            chunk_overlap=100,
+            separators=[
+                "\n\n",
+                "\n",
+                ".",
+                "!",
+                "?",
+                ";",
+                ":",
+                "\t",
+                "\r\n",
+                "\r",
+                "，",
+                "。",
+                "！",
+                "？",
+                "；",
+                "：",
+            ],
+        )
 
+    def __init_vector_store(self, persist_directory: str):
+        return Chroma(
+            embedding_function=self.embeddings,
+            persist_directory=persist_directory,
+            collection_name="calerie-health",
+            client_settings=ChromaSettings(
+                anonymized_telemetry=False,  # reduce the memory usage
+                allow_reset=False,  # prevent accidental deletion of the vector store
+            ),
+        )
 
+    def __init_retriever(self):
+        return self.vector_store.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 3,  # number of results to return
+                "lambda_mult": 0.7,  # lambda value for MMR
+                "score_threshold": 0.3,  # similarity threshold
+            },
+        )
+
+################################################################################
+# main
+################################################################################
 def parse_args():
     parser = argparse.ArgumentParser(
-        prog="app.py",
+        prog="crag_retriever.py",
         description="CRAG command",
         epilog="Example:\n"
         "  create: app.py --create ./files\n"
@@ -159,10 +165,8 @@ def main():
     with open("config.toml", "rb") as f:
         config_data = tomllib.load(f)
         model_name = config_data.get("huggingface", {}).get("embed_model")
-
-    root_path = "./var"
-    files_directory = os.path.join(root_path, "files")
-    persist_directory = os.path.join(root_path, "vector_store")
+        files_directory = config_data.get("vector", {}).get("files_directory")
+        persist_directory = config_data.get("vector", {}).get("persist_directory")
 
     print(f"model_name: {model_name}")
     print(f"files_directory: {files_directory}")
@@ -176,7 +180,7 @@ def main():
 
     if args.create:
         print("=== Create retriever ===")
-        retriever.create_vector(files_directory=args.create)
+        retriever.build_index(files_directory=args.create)
     elif args.query:
         print("=== Query retriever ===")
         query = args.query.encode("utf-8").decode("utf-8")
