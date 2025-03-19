@@ -1,9 +1,13 @@
-import os
+###############################################################################
+# Imports
+###############################################################################
 import os
 import sys
 import argparse
 import tomllib
+from typing import List
 
+# langchain
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.vectorstores.base import VectorStore
 from langchain_chroma import Chroma
@@ -13,6 +17,7 @@ from langchain_community.document_loaders import (
     UnstructuredFileLoader,
 )
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.schema import Document
 
 
 class CragRetriever:
@@ -61,10 +66,9 @@ class CragRetriever:
         print(f"Added {len(all_splits)} document splits to the vector store.")
 
     # query vector store
-    def query(self, query: str, top_k: int = 1):
+    def invoke(self, query: str) -> List[Document]:
         """Query the vector store with a text and return the top_k results."""
-        # return self.vector_store.query(query, top_k=top_k)
-        return self.retriever.invoke(query, top_k=top_k)
+        return self.retriever.invoke(query)
 
     ###############################################################################
     # Internal functions
@@ -119,9 +123,9 @@ class CragRetriever:
         return self.vector_store.as_retriever(
             search_type="mmr",
             search_kwargs={
-                "k": 3,  # number of results to return
+                "k": 5,  # number of results to return
                 "lambda_mult": 0.7,  # lambda value for MMR
-                "score_threshold": 0.3,  # similarity threshold
+                "score_threshold": 0.5,  # similarity threshold
             },
         )
 
@@ -186,7 +190,7 @@ def main():
         query = args.query.encode("utf-8").decode("utf-8")
         print(f"Question: {query}\n")
 
-        results = retriever.query(query, top_k=3)
+        results = retriever.invoke(query)
         if not results:
             print("=== No results ===")
             return

@@ -11,7 +11,7 @@
 
 ################################################################################
 # Imports
-###############################################################################
+################################################################################
 import os
 import logging
 import operator
@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 import tomllib
 
-# langchain
+# import langchain
 from langchain import hub
 from langchain.chains import LLMChain
 from langchain_deepseek import ChatDeepSeek
@@ -52,9 +52,9 @@ from langgraph.checkpoint.memory import MemorySaver, InMemorySaver
 from crag_retriever import CragRetriever
 
 
-################################################################################
+#
 # RAG state
-################################################################################
+#
 class RagState(TypedDict):
     question: str
     answer: str
@@ -65,17 +65,24 @@ class RagState(TypedDict):
     # documents: Annotated[list, operator.add]
 
 
-################################################################################
+#
 # RAG Graph
-################################################################################
+#
 class CragGraph:
-    def __init__(self, retriever: CragRetriever = None):
+    def __init__(self):
         self.graph = None
         self.llm = None
+        self.retriever = None
+        self.search_tool = None
+
+    def set_llm(self, llm: ChatDeepSeek):
+        self.llm = llm
+
+    def set_retriever(self, retriever: CragRetriever):
         self.retriever = retriever
 
-        self.__init_config()
-        self.__init_llm()
+    def set_search_tool(self, search_tool: TavilySearchAPIRetriever):
+        self.search_tool = search_tool
 
     def compile(self) -> StateGraph:
         if not self.graph:
@@ -87,39 +94,9 @@ class CragGraph:
             self.graph = self.__build_graph()
         return self.graph.invoke(state)
 
-    #
-    # Internal functions
-    #
-    def __init_config(self):
-        load_dotenv()
-        self.deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
-        self.silicon_api_key = os.getenv("SILICON_API_KEY")
-        self.tavily_api_key = os.getenv("TAVILY_API_KEY")
-        self.linkup_api_key = os.getenv("LINKUP_API_KEY")
-
-        with open("config.toml", "rb") as f:
-            config_data = tomllib.load(f)
-            self.deepseek_llm_model = config_data.get("deepseek", {}).get("model")
-            self.deepseek_llm_temperature = config_data.get("deepseek", {}).get(
-                "temperature"
-            )
-            self.deepseek_llm_max_tokens = config_data.get("deepseek", {}).get(
-                "max_tokens"
-            )
-
-    def __init_llm(self):
-        self.llm = ChatDeepSeek(
-            model=self.deepseek_llm_model,
-            temperature=self.deepseek_llm_temperature,
-            max_tokens=self.deepseek_llm_max_tokens,
-            timeout=None,
-            top_p=0.9,
-            frequency_penalty=0.7,
-            presence_penalty=0.5,
-            max_retries=3,
-            api_key=self.deepseek_api_key,
-        )
-
+    ############################################################################
+    ## Internal functions
+    ############################################################################
     def __build_graph(self) -> StateGraph:
         # Create Graph
         workflow = StateGraph(RagState)
@@ -163,37 +140,36 @@ class CragGraph:
 
         return workflow
 
-    #
-    # Nodes functions
-    #
-    @staticmethod
-    def __node_rewrite_qestion(state: RagState) -> RagState:
+    ############################################################################
+    ## Nodes functions
+    ############################################################################
+    def __node_rewrite_qestion(self, state: RagState) -> RagState:
         question = state["question"]
         better_question = None
+
+        print(f"question: {question}")
 
         # Re-write question
         # better_question = question_rewriter.invoke({"question": question})
         if not better_question:
             better_question = question
 
+
         updated_state = state.copy()
         updated_state.update({"question": better_question})
         return updated_state
 
-    @staticmethod
-    def __node_retrieve(state: RagState) -> RagState:
+    def __node_retrieve(self, state: RagState) -> RagState:
         question = state["question"]
-        retrieves = []
 
         # Retrieval
-        # retrieves = retriever.invoke(question)
+        retrieves = self.retriever.invoke(question)
 
         updated_state = state.copy()
         updated_state.update({"retrieves": retrieves})
         return updated_state
 
-    @staticmethod
-    def __node_retrieve_grade(state: RagState) -> RagState:
+    def __node_retrieve_grade(self, state: RagState) -> RagState:
         question = state["question"]
         retrieves = state["retrieves"]
         relevant_docs = []
@@ -201,6 +177,14 @@ class CragGraph:
 
         # Score each doc
         for doc in retrieves:
+            print("=== retrieve === ")
+            print(doc)
+
+            if len(doc.page_content) < 100:
+                print("=== skip content too less === ")
+                continue
+
+            grade = None
             # grade = retrieval_grader.invoke(
             #    {"question": question, "document": doc.page_content}
             # )
@@ -208,7 +192,7 @@ class CragGraph:
             if grade:
                 score = grade.score
             else:
-                score = 0.5
+                score = 0.8
 
             if score > 0.7:
                 relevant_docs.append(doc)
@@ -221,8 +205,7 @@ class CragGraph:
         )
         return updated_state
 
-    @staticmethod
-    def __node_web_search(state: RagState) -> RagState:
+    def __node_web_search(self, state: RagState) -> RagState:
         question = state["question"]
 
         # Web search
@@ -233,25 +216,26 @@ class CragGraph:
         updated_state.update({"web_searchs": web_results})
         return updated_state
 
-    @staticmethod
-    def __node_generate(state: RagState) -> RagState:
+    def __node_generate(self, state: RagState) -> RagState:
         question = state["question"]
         retrieves_relevant = state.get("retrieves_relevant", None)
         retrieves_weak = state.get("retrieves_weak", None)
         web_searchs = state.get("web_searchs", None)
 
         # generation
-        generation = "This is the answer!"
+        generation = ""
+        if retrieves_relevant:
+            for doc in retrieves_relevant:
+                generation = generation + doc.page_content + "\n"
 
         updated_state = state.copy()
         updated_state.update({"answer": generation})
         return updated_state
 
-    #
-    # Edges conditional functions
-    #
-    @staticmethod
-    def __condition_retrieve(state: RagState) -> str:
+    ############################################################################
+    ## Edges conditional functions
+    ############################################################################
+    def __condition_retrieve(self, state: RagState) -> str:
         retrieves = state["retrieves"]
 
         if retrieves:
@@ -259,8 +243,7 @@ class CragGraph:
         else:
             return "failure"
 
-    @staticmethod
-    def __condition_retrieve_grade(state: RagState) -> str:
+    def __condition_retrieve_grade(self, state: RagState) -> str:
         retrieves_relevant = state["retrieves_relevant"] or None
         retrieves_weak = state["retrieves_weak"] or None
 

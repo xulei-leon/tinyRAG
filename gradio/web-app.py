@@ -1,12 +1,19 @@
+import os
 import sys
 import tomllib
 import gradio as gr
+from dotenv import load_dotenv
+import tomllib
+
+# langchain
+from langchain_deepseek import ChatDeepSeek
+
+# my modules
 from crag_graph import CragGraph
 from crag_retriever import CragRetriever
 
+
 # Define a function to run the conversation
-
-
 def run_conversation(user_input, chat_history):
     inputs = {"question": user_input}
     response = rag_app.invoke(inputs)
@@ -14,13 +21,15 @@ def run_conversation(user_input, chat_history):
     ai_response = response["answer"]
 
     chat_history.append((user_input, ai_response))
+
     return "", chat_history
 
 
 # Create a Gradio interface
-with gr.Blocks() as demo:
-    gr.Markdown("# LangGraph Chat Demo")
-    chatbot = gr.Chatbot()
+with gr.Blocks() as agent:
+    gr.Markdown("# LangGraph CRAG agent")
+    chatbot = gr.Chatbot(type="tuples")
+
     msg = gr.Textbox()
     clear = gr.Button("Clear")
 
@@ -29,11 +38,20 @@ with gr.Blocks() as demo:
 
 # Launch the interface
 if __name__ == "__main__":
+    load_dotenv()
+    deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
+    silicon_api_key = os.getenv("SILICON_API_KEY")
+    tavily_api_key = os.getenv("TAVILY_API_KEY")
+    linkup_api_key = os.getenv("LINKUP_API_KEY")
+
     with open("config.toml", "rb") as f:
         config_data = tomllib.load(f)
         model_name = config_data.get("huggingface", {}).get("embed_model")
         files_directory = config_data.get("vector", {}).get("files_directory")
         persist_directory = config_data.get("vector", {}).get("persist_directory")
+        deepseek_llm_model = config_data.get("deepseek", {}).get("model")
+        deepseek_llm_temperature = config_data.get("deepseek", {}).get("temperature")
+        deepseek_llm_max_tokens = config_data.get("deepseek", {}).get("max_tokens")
 
     print(f"model_name: {model_name}")
     print(f"files_directory: {files_directory}")
@@ -51,11 +69,27 @@ if __name__ == "__main__":
         print("Error: model_name is not defined")
         sys.exit(1)
 
+    llm = ChatDeepSeek(
+        model=deepseek_llm_model,
+        temperature=deepseek_llm_temperature,
+        max_tokens=deepseek_llm_max_tokens,
+        timeout=None,
+        top_p=0.9,
+        frequency_penalty=0.7,
+        presence_penalty=0.5,
+        max_retries=3,
+        api_key=deepseek_api_key,
+    )
+
     retriever = CragRetriever(
         model_name=model_name,
         persist_directory=persist_directory,
     )
 
-    rag_app = CragGraph(retriever=retriever).compile()
+    # Create graph
+    rag_graph = CragGraph()
+    rag_graph.set_retriever(retriever)
+    rag_graph.set_llm(llm)
+    rag_app = rag_graph.compile()
 
-    demo.launch()
+    agent.launch()
