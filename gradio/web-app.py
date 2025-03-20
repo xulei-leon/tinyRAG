@@ -89,13 +89,12 @@ if __name__ == "__main__":
 
     web_retriever = TavilySearchAPIRetriever(api_key=tavily_api_key, k=3)
 
-
     # Create graph
-    rag_graph = CragGraph()
-    rag_graph.set_rag_retriever(rag_retriever)
-    rag_graph.set_llm(llm)
-    rag_graph.set_web_retriever(web_retriever)
+    rag_graph = CragGraph(
+        llm=llm,
+        rag_retriever=rag_retriever,
+        web_retriever=web_retriever,
+    )
     rag_app = rag_graph.compile()
-
 
     agent.launch()

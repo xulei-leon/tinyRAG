@@ -58,10 +58,10 @@ from crag_retriever import CragRetriever
 class RagState(TypedDict):
     question: str
     answer: str
-    retrieves: List[Document]
-    retrieves_relevant: List[Document]
-    retrieves_weak: List[Document]
-    web_searchs: List[Document]
+    rag_retrieves: List[Document]
+    rag_retrieves_relevant: List[Document]
+    rag_retrieves_weak: List[Document]
+    web_retrieves: List[Document]
     # documents: Annotated[list, operator.add]
 
 
@@ -69,20 +69,16 @@ class RagState(TypedDict):
 # RAG Graph
 #
 class CragGraph:
-    def __init__(self):
-        self.graph = None
-        self.llm = None
-        self.rag_retriever = None
-        self.web_retriever = None
-
-    def set_llm(self, llm: ChatDeepSeek):
+    def __init__(
+        self,
+        rag_retriever: CragRetriever,
+        web_retriever: TavilySearchAPIRetriever,
+        llm: ChatDeepSeek,
+    ):
         self.llm = llm
-
-    def set_rag_retriever(self, rag_retriever: CragRetriever):
         self.rag_retriever = rag_retriever
-
-    def set_web_retriever(self, web_retriever: TavilySearchAPIRetriever):
         self.web_retriever = web_retriever
+        self.graph = None
 
     def compile(self) -> StateGraph:
         if not self.graph:
@@ -99,46 +95,46 @@ class CragGraph:
     ############################################################################
     def __build_graph(self) -> StateGraph:
         # Create Graph
-        workflow = StateGraph(RagState)
+        graph = StateGraph(RagState)
 
         # Add nodes
-        workflow.add_node("rewrite_qestion", self.__node_rewrite_qestion)
-        workflow.add_node("retrieve", self.__node_retrieve)
-        workflow.add_node("retrieve_grade", self.__node_retrieve_grade)
-        workflow.add_node("web_search", self.__node_web_search)
-        workflow.add_node("generate", self.__node_generate)
+        graph.add_node("rewrite_qestion", self.__node_rewrite_qestion)
+        graph.add_node("rag_retrieve", self.__node_rag_retrieve)
+        graph.add_node("rag_retrieve_grade", self.__node_rag_retrieve_grade)
+        graph.add_node("web_retrieve", self.__node_web_retrieve)
+        graph.add_node("generate_answer", self.__node_generate_answer)
 
         # Add edges
-        workflow.add_edge(START, "rewrite_qestion")
-        workflow.add_edge("rewrite_qestion", "retrieve")
+        graph.add_edge(START, "rewrite_qestion")
+        graph.add_edge("rewrite_qestion", "rag_retrieve")
 
-        # retrieve
-        workflow.add_conditional_edges(
-            "retrieve",
+        # RAG retrieve
+        graph.add_conditional_edges(
+            "rag_retrieve",
             self.__condition_retrieve,
             {
-                "success": "retrieve_grade",
-                "failure": "web_search",
+                "success": "rag_retrieve_grade",
+                "failure": "web_retrieve",
             },
         )
 
-        workflow.add_conditional_edges(
-            "retrieve_grade",
+        graph.add_conditional_edges(
+            "rag_retrieve_grade",
             self.__condition_retrieve_grade,
             {
-                "Relevant": "generate",
-                "Weak": "web_search",
-                "Irrelevant": "web_search",
+                "Relevant": "generate_answer",
+                "Weak": "web_retrieve",
+                "Irrelevant": "web_retrieve",
             },
         )
 
-        # web_search
-        workflow.add_edge("web_search", "generate")
+        # web retrieve
+        graph.add_edge("web_retrieve", "generate_answer")
 
-        # generate
-        workflow.add_edge("generate", END)
+        # generate answer
+        graph.add_edge("generate_answer", END)
 
-        return workflow
+        return graph
 
     ############################################################################
     ## Nodes functions
@@ -154,34 +150,33 @@ class CragGraph:
         if not better_question:
             better_question = question
 
-
         updated_state = state.copy()
         updated_state.update({"question": better_question})
         return updated_state
 
-    def __node_retrieve(self, state: RagState) -> RagState:
+    def __node_rag_retrieve(self, state: RagState) -> RagState:
         question = state["question"]
 
         # Retrieval
-        retrieves = self.rag_retriever.invoke(question)
+        rag_retrieves = self.rag_retriever.invoke(question)
 
         updated_state = state.copy()
-        updated_state.update({"retrieves": retrieves})
+        updated_state.update({"rag_retrieves": rag_retrieves})
         return updated_state
 
-    def __node_retrieve_grade(self, state: RagState) -> RagState:
+    def __node_rag_retrieve_grade(self, state: RagState) -> RagState:
         question = state["question"]
-        retrieves = state["retrieves"]
-        relevant_docs = []
-        weak_docs = []
+        rag_retrieves = state["rag_retrieves"]
+        rag_retrieves_relevant = []
+        rag_retrieves_weak = []
 
         # Score each doc
-        for doc in retrieves:
-            print("=== rag retrieve === ")
-            print(doc)
+        for document in rag_retrieves:
+            print("=== RAG retrieve === ")
+            print(document.page_content)
 
-            if len(doc.page_content) < 100:
-                print("=== skip content too less === ")
+            if len(document.page_content) < 100:
+                print("Warning: skip rag retrieves content too less.")
                 continue
 
             grade = None
@@ -195,47 +190,47 @@ class CragGraph:
                 score = 0.5
 
             if score > 0.7:
-                relevant_docs.append(doc)
+                rag_retrieves_relevant.append(document)
             elif score >= 0.5:
-                weak_docs.append(doc)
+                rag_retrieves_weak.append(document)
 
         updated_state = state.copy()
         updated_state.update(
-            {"retrieves_relevant": relevant_docs, "retrieves_weak": weak_docs}
+            {"rag_retrieves_relevant": rag_retrieves_relevant, "rag_retrieves_weak": rag_retrieves_weak}
         )
         return updated_state
 
-    def __node_web_search(self, state: RagState) -> RagState:
+    def __node_web_retrieve(self, state: RagState) -> RagState:
         question = state["question"]
 
         # Web search
-        web_results = self.web_retriever.invoke(question)
-        for doc in web_results:
+        web_retrieves = self.web_retriever.invoke(question)
+        for doc in web_retrieves:
             print("=== web retrieve === ")
-            print(doc)
+            print(doc.page_content)
 
         updated_state = state.copy()
-        updated_state.update({"web_searchs": web_results})
+        updated_state.update({"web_retrieves": web_retrieves})
         return updated_state
 
-    def __node_generate(self, state: RagState) -> RagState:
+    def __node_generate_answer(self, state: RagState) -> RagState:
         question = state["question"]
-        retrieves_relevant = state.get("retrieves_relevant", None)
-        retrieves_weak = state.get("retrieves_weak", None)
-        web_searchs = state.get("web_searchs", None)
+        rag_retrieves_relevant = state.get("rag_retrieves_relevant", None)
+        rag_retrieves_weak = state.get("rag_retrieves_weak", None)
+        web_retrieves = state.get("web_retrieves", None)
 
         # generation
         generation = ""
-        if retrieves_relevant:
-            for doc in retrieves_relevant:
+        if rag_retrieves_relevant:
+            for doc in rag_retrieves_relevant:
                 generation = generation + doc.page_content + "\n"
 
-        if retrieves_weak:
-            for doc in retrieves_weak:
+        if rag_retrieves_weak:
+            for doc in rag_retrieves_weak:
                 generation = generation + doc.page_content + "\n"
 
-        if web_searchs:
-            for doc in web_searchs:
+        if web_retrieves:
+            for doc in web_retrieves:
                 generation = generation + doc.page_content + "\n"
 
         updated_state = state.copy()
@@ -246,20 +241,20 @@ class CragGraph:
     ## Edges conditional functions
     ############################################################################
     def __condition_retrieve(self, state: RagState) -> str:
-        retrieves = state["retrieves"]
+        rag_retrieves = state["rag_retrieves"]
 
-        if retrieves:
+        if rag_retrieves:
             return "success"
         else:
             return "failure"
 
     def __condition_retrieve_grade(self, state: RagState) -> str:
-        retrieves_relevant = state["retrieves_relevant"] or None
-        retrieves_weak = state["retrieves_weak"] or None
+        rag_retrieves_relevant = state["rag_retrieves_relevant"] or None
+        rag_retrieves_weak = state["rag_retrieves_weak"] or None
 
-        if retrieves_relevant:
+        if rag_retrieves_relevant:
             return "Relevant"
-        elif retrieves_weak:
+        elif rag_retrieves_weak:
             return "Weak"
         else:
             return "Irrelevant"
