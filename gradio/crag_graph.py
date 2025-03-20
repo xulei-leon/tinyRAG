@@ -72,17 +72,17 @@ class CragGraph:
     def __init__(self):
         self.graph = None
         self.llm = None
-        self.retriever = None
-        self.search_tool = None
+        self.rag_retriever = None
+        self.web_retriever = None
 
     def set_llm(self, llm: ChatDeepSeek):
         self.llm = llm
 
-    def set_retriever(self, retriever: CragRetriever):
-        self.retriever = retriever
+    def set_rag_retriever(self, rag_retriever: CragRetriever):
+        self.rag_retriever = rag_retriever
 
-    def set_search_tool(self, search_tool: TavilySearchAPIRetriever):
-        self.search_tool = search_tool
+    def set_web_retriever(self, web_retriever: TavilySearchAPIRetriever):
+        self.web_retriever = web_retriever
 
     def compile(self) -> StateGraph:
         if not self.graph:
@@ -163,7 +163,7 @@ class CragGraph:
         question = state["question"]
 
         # Retrieval
-        retrieves = self.retriever.invoke(question)
+        retrieves = self.rag_retriever.invoke(question)
 
         updated_state = state.copy()
         updated_state.update({"retrieves": retrieves})
@@ -177,7 +177,7 @@ class CragGraph:
 
         # Score each doc
         for doc in retrieves:
-            print("=== retrieve === ")
+            print("=== rag retrieve === ")
             print(doc)
 
             if len(doc.page_content) < 100:
@@ -192,7 +192,7 @@ class CragGraph:
             if grade:
                 score = grade.score
             else:
-                score = 0.8
+                score = 0.5
 
             if score > 0.7:
                 relevant_docs.append(doc)
@@ -209,8 +209,10 @@ class CragGraph:
         question = state["question"]
 
         # Web search
-        web_results = []
-        # web_results = web_search_tool.invoke({"query": question})
+        web_results = self.web_retriever.invoke(question)
+        for doc in web_results:
+            print("=== web retrieve === ")
+            print(doc)
 
         updated_state = state.copy()
         updated_state.update({"web_searchs": web_results})
@@ -226,6 +228,14 @@ class CragGraph:
         generation = ""
         if retrieves_relevant:
             for doc in retrieves_relevant:
+                generation = generation + doc.page_content + "\n"
+
+        if retrieves_weak:
+            for doc in retrieves_weak:
+                generation = generation + doc.page_content + "\n"
+
+        if web_searchs:
+            for doc in web_searchs:
                 generation = generation + doc.page_content + "\n"
 
         updated_state = state.copy()

@@ -7,6 +7,7 @@ import tomllib
 
 # langchain
 from langchain_deepseek import ChatDeepSeek
+from langchain_community.retrievers import TavilySearchAPIRetriever
 
 # my modules
 from crag_graph import CragGraph
@@ -81,15 +82,20 @@ if __name__ == "__main__":
         api_key=deepseek_api_key,
     )
 
-    retriever = CragRetriever(
+    rag_retriever = CragRetriever(
         model_name=model_name,
         persist_directory=persist_directory,
     )
 
+    web_retriever = TavilySearchAPIRetriever(api_key=tavily_api_key, k=3)
+
+
     # Create graph
     rag_graph = CragGraph()
-    rag_graph.set_retriever(retriever)
+    rag_graph.set_rag_retriever(rag_retriever)
     rag_graph.set_llm(llm)
+    rag_graph.set_web_retriever(web_retriever)
     rag_app = rag_graph.compile()
+
 
     agent.launch()
