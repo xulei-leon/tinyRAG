@@ -12,6 +12,7 @@ from langchain_community.retrievers import TavilySearchAPIRetriever
 # my modules
 from crag_graph import CragGraph
 from crag_retriever import CragRetriever
+from llm_processor import LLMProcessor
 
 
 # Define a function to run the conversation
@@ -82,16 +83,16 @@ if __name__ == "__main__":
         api_key=deepseek_api_key,
     )
 
+    llm_processor = LLMProcessor(llm=llm)
     rag_retriever = CragRetriever(
         model_name=model_name,
         persist_directory=persist_directory,
     )
-
     web_retriever = TavilySearchAPIRetriever(api_key=tavily_api_key, k=3)
 
     # Create graph
     rag_graph = CragGraph(
-        llm=llm,
+        llm_processor=llm_processor,
         rag_retriever=rag_retriever,
         web_retriever=web_retriever,
     )

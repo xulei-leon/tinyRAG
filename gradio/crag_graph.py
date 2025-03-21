@@ -50,6 +50,7 @@ from langgraph.checkpoint.memory import MemorySaver, InMemorySaver
 
 # my modules
 from crag_retriever import CragRetriever
+from llm_processor import LLMProcessor
 
 
 #
@@ -73,9 +74,9 @@ class CragGraph:
         self,
         rag_retriever: CragRetriever,
         web_retriever: TavilySearchAPIRetriever,
-        llm: ChatDeepSeek,
+        llm_processor: LLMProcessor,
     ):
-        self.llm = llm
+        self.llm_processor = llm_processor
         self.rag_retriever = rag_retriever
         self.web_retriever = web_retriever
         self.graph = None
@@ -141,17 +142,15 @@ class CragGraph:
     ############################################################################
     def __node_rewrite_qestion(self, state: RagState) -> RagState:
         question = state["question"]
-        better_question = None
-
         print(f"question: {question}")
 
         # Re-write question
-        # better_question = question_rewriter.invoke({"question": question})
-        if not better_question:
-            better_question = question
+        rewite_question = self.llm_processor.rewrite_question(question=question)
+        if not rewite_question:
+            rewite_question = question
 
         updated_state = state.copy()
-        updated_state.update({"question": better_question})
+        updated_state.update({"question": rewite_question})
         return updated_state
 
     def __node_rag_retrieve(self, state: RagState) -> RagState:
@@ -179,16 +178,9 @@ class CragGraph:
                 print("Warning: skip rag retrieves content too less.")
                 continue
 
-            grade = None
-            # grade = retrieval_grader.invoke(
-            #    {"question": question, "document": doc.page_content}
-            # )
-
-            if grade:
-                score = grade.score
-            else:
-                score = 0.5
-
+            score = self.llm_processor.grade_relevance(
+                question=question, context=document.page_content
+            )
             if score > 0.7:
                 rag_retrieves_relevant.append(document)
             elif score >= 0.5:
@@ -196,7 +188,10 @@ class CragGraph:
 
         updated_state = state.copy()
         updated_state.update(
-            {"rag_retrieves_relevant": rag_retrieves_relevant, "rag_retrieves_weak": rag_retrieves_weak}
+            {
+                "rag_retrieves_relevant": rag_retrieves_relevant,
+                "rag_retrieves_weak": rag_retrieves_weak,
+            }
         )
         return updated_state
 
@@ -219,19 +214,22 @@ class CragGraph:
         rag_retrieves_weak = state.get("rag_retrieves_weak", None)
         web_retrieves = state.get("web_retrieves", None)
 
-        # generation
-        generation = ""
+        context = ""
         if rag_retrieves_relevant:
-            for doc in rag_retrieves_relevant:
-                generation = generation + doc.page_content + "\n"
+            context += "\n".join(doc.page_content for doc in rag_retrieves_relevant)
 
         if rag_retrieves_weak:
-            for doc in rag_retrieves_weak:
-                generation = generation + doc.page_content + "\n"
+            context += "\n".join([doc.page_content for doc in rag_retrieves_weak])
 
         if web_retrieves:
-            for doc in web_retrieves:
-                generation = generation + doc.page_content + "\n"
+            context += "\n".join([doc.page_content for doc in web_retrieves])
+
+        # Generation
+        generation = self.llm_processor.generate_answer(
+            question=question, context=context
+        )
+        if not generation:
+            generation = context
 
         updated_state = state.copy()
         updated_state.update({"answer": generation})
