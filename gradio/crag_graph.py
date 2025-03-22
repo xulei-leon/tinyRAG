@@ -70,6 +70,8 @@ class RagState(TypedDict):
 # RAG Graph
 #
 class CragGraph:
+
+
     def __init__(
         self,
         rag_retriever: CragRetriever,
@@ -80,6 +82,10 @@ class CragGraph:
         self.rag_retriever = rag_retriever
         self.web_retriever = web_retriever
         self.graph = None
+
+        self.score_relevant = 0.7
+        self.score_weak = 0.5
+        self.logger = logging.getLogger(__name__)
 
     def compile(self) -> StateGraph:
         if not self.graph:
@@ -168,23 +174,28 @@ class CragGraph:
         rag_retrieves = state["rag_retrieves"]
         rag_retrieves_relevant = []
         rag_retrieves_weak = []
+        content_size_min = 50
 
         # Score each doc
-        for document in rag_retrieves:
-            print("=== RAG retrieve === ")
+        for index, document in enumerate(rag_retrieves):
+            print(f"=== RAG retrieve [{index}] grade === ")
             print(document.page_content)
 
-            if len(document.page_content) < 100:
-                print("Warning: skip rag retrieves content too less.")
+            if len(document.page_content) < content_size_min:
+                print("Warning: skip RAG retrieves content too less.")
                 continue
 
             score = self.llm_processor.grade_relevance(
                 question=question, context=document.page_content
             )
-            if score > 0.7:
+            if score > self.score_relevant:
+                print(f"RAG retrieves relevant score {score}.")
                 rag_retrieves_relevant.append(document)
-            elif score >= 0.5:
+            elif score >= self.score_weak:
+                print(f"RAG retrieves weak score {score}.")
                 rag_retrieves_weak.append(document)
+            else:
+                print(f"Warning: skip RAG retrieves content score {score}.")
 
         updated_state = state.copy()
         updated_state.update(

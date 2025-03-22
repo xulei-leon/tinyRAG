@@ -98,4 +98,4 @@ if __name__ == "__main__":
     )
     rag_app = rag_graph.compile()
 
-    agent.launch(pwa=True)
+    agent.launch(pwa=True, share=True)
