@@ -18,24 +18,30 @@ from langchain_community.document_loaders import (
 )
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
+from langchain.retrievers import EnsembleRetriever
+from langchain_community.retrievers import BM25Retriever
 
 
+# TODO List
+# Add BM25Retriever and use EnsembleRetriever
+# Add multi type of retriever including mmr and similarity_score_threshold
 class CragRetriever:
     def __init__(
         self,
         model_name: str = "BAAI/bge-small-zh-v1.5",
         persist_directory: str = "vector_store",
+        search_type: str = "score_threshold",
     ):
         os.makedirs(persist_directory, exist_ok=True)
         os.environ["TRANSFORMERS_OFFLINE"] = "1"  # to avoid downloading models
-        # to avoid downloading datasets
-        os.environ["HF_DATASETS_OFFLINE"] = "1"
+        os.environ["HF_DATASETS_OFFLINE"] = "1"  # to avoid downloading datasets
 
         self.batch_size = 10
+        self.k = 3
         self.embeddings = self.__init_embedder(model_name)
         self.text_splitter = self.__init_text_splitter()
         self.vector_store = self.__init_vector_store(persist_directory)
-        self.retriever = self.__init_retriever()
+        self.retriever = self.__init_retriever(search_type)
 
     # create vector store
     def build_index(self, files_directory: str):
@@ -119,15 +125,22 @@ class CragRetriever:
             ),
         )
 
-    def __init_retriever(self):
-        return self.vector_store.as_retriever(
-            search_type="mmr",
-            search_kwargs={
-                "k": 5,  # number of results to return
-                "lambda_mult": 0.7,  # lambda value for MMR
-                "score_threshold": 0.5,  # similarity threshold
-            },
-        )
+    def __init_retriever(self, search_type: str):
+        if search_type != "score_threshold":
+            return self.vector_store.as_retriever(
+                search_type="mmr",
+                search_kwargs={
+                    "k": self.k,  # number of results to return
+                    "fetch_k": self.k * 10,
+                    "lambda_mult": 0.9,  # lambda value for MMR
+                },
+            )
+        else:
+            return self.vector_store.as_retriever(
+                search_type="similarity_score_threshold",
+                search_kwargs={"score_threshold": 0.5, "k": 3},
+            )
+
 
 ################################################################################
 # main

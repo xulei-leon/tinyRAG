@@ -52,6 +52,9 @@ from langgraph.checkpoint.memory import MemorySaver, InMemorySaver
 from crag_retriever import CragRetriever
 from llm_processor import LLMProcessor
 
+# TODO list
+# Parallel processing of multiple retrieve
+
 
 #
 # RAG state
@@ -71,18 +74,19 @@ class RagState(TypedDict):
 #
 class CragGraph:
 
-
     def __init__(
         self,
         rag_retriever: CragRetriever,
         web_retriever: TavilySearchAPIRetriever,
         llm_processor: LLMProcessor,
     ):
+        load_dotenv()
         self.llm_processor = llm_processor
         self.rag_retriever = rag_retriever
         self.web_retriever = web_retriever
         self.graph = None
 
+        self.search_type = "score_threshold"
         self.score_relevant = 0.7
         self.score_weak = 0.5
         self.logger = logging.getLogger(__name__)
@@ -105,7 +109,7 @@ class CragGraph:
         graph = StateGraph(RagState)
 
         # Add nodes
-        graph.add_node("rewrite_qestion", self.__node_rewrite_qestion)
+        graph.add_node("rewrite_qestion", self.__node_rewrite_question)
         graph.add_node("rag_retrieve", self.__node_rag_retrieve)
         graph.add_node("rag_retrieve_grade", self.__node_rag_retrieve_grade)
         graph.add_node("web_retrieve", self.__node_web_retrieve)
@@ -146,17 +150,18 @@ class CragGraph:
     ############################################################################
     ## Nodes functions
     ############################################################################
-    def __node_rewrite_qestion(self, state: RagState) -> RagState:
+    def __node_rewrite_question(self, state: RagState) -> RagState:
         question = state["question"]
-        print(f"question: {question}")
+        print(f"[rewrite_question] question: {question}")
 
         # Re-write question
-        rewite_question = self.llm_processor.rewrite_question(question=question)
-        if not rewite_question:
-            rewite_question = question
+        rewrite_question = self.llm_processor.rewrite_question(question=question)
+        if not rewrite_question:
+            rewrite_question = question
 
+        print(f"[rewrite_question] rewite question: {rewrite_question}")
         updated_state = state.copy()
-        updated_state.update({"question": rewite_question})
+        updated_state.update({"question": rewrite_question})
         return updated_state
 
     def __node_rag_retrieve(self, state: RagState) -> RagState:
@@ -164,6 +169,7 @@ class CragGraph:
 
         # Retrieval
         rag_retrieves = self.rag_retriever.invoke(question)
+        print(f"[rag_retrieve] rag retrieve number: {len(rag_retrieves)}")
 
         updated_state = state.copy()
         updated_state.update({"rag_retrieves": rag_retrieves})
@@ -176,7 +182,7 @@ class CragGraph:
         rag_retrieves_weak = []
         content_size_min = 50
 
-        # Score each doc
+        # Score each retrieve document
         for index, document in enumerate(rag_retrieves):
             print(f"=== RAG retrieve [{index}] grade === ")
             print(document.page_content)
@@ -185,10 +191,14 @@ class CragGraph:
                 print("Warning: skip RAG retrieves content too less.")
                 continue
 
-            score = self.llm_processor.grade_relevance(
-                question=question, context=document.page_content
-            )
-            if score > self.score_relevant:
+            if self.search_type == "score_threshold":
+                score = self.score_relevant
+            else:
+                score = self.llm_processor.grade_relevance(
+                    question=question, context=document.page_content
+                )
+
+            if score >= self.score_relevant:
                 print(f"RAG retrieves relevant score {score}.")
                 rag_retrieves_relevant.append(document)
             elif score >= self.score_weak:
@@ -200,6 +210,7 @@ class CragGraph:
         updated_state = state.copy()
         updated_state.update(
             {
+                "rag_retrieves": [],
                 "rag_retrieves_relevant": rag_retrieves_relevant,
                 "rag_retrieves_weak": rag_retrieves_weak,
             }
@@ -242,6 +253,8 @@ class CragGraph:
         if not generation:
             generation = context
 
+        print(f"[generate_answer] answer: {generation}")
+
         updated_state = state.copy()
         updated_state.update({"answer": generation})
         return updated_state
@@ -252,18 +265,22 @@ class CragGraph:
     def __condition_retrieve(self, state: RagState) -> str:
         rag_retrieves = state["rag_retrieves"]
 
-        if rag_retrieves:
+        if len(rag_retrieves) > 0:
             return "success"
         else:
+            print("[condition_retrieve]: failure")
             return "failure"
 
     def __condition_retrieve_grade(self, state: RagState) -> str:
-        rag_retrieves_relevant = state["rag_retrieves_relevant"] or None
-        rag_retrieves_weak = state["rag_retrieves_weak"] or None
+        rag_retrieves_relevant = state["rag_retrieves_relevant"] or []
+        rag_retrieves_weak = state["rag_retrieves_weak"] or []
 
-        if rag_retrieves_relevant:
+        if len(rag_retrieves_relevant) > 0:
+            print(f"[condition_retrieve_grade] Relevant number: {len(rag_retrieves_relevant)}")
             return "Relevant"
-        elif rag_retrieves_weak:
+        elif len(rag_retrieves_weak):
+            print(f"[condition_retrieve_grade] Weak number: {len(rag_retrieves_weak)}")
             return "Weak"
         else:
+            print(f"[condition_retrieve_grade] Irrelevant")
             return "Irrelevant"

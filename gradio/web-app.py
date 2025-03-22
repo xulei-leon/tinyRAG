@@ -46,6 +46,7 @@ if __name__ == "__main__":
     tavily_api_key = os.getenv("TAVILY_API_KEY")
     linkup_api_key = os.getenv("LINKUP_API_KEY")
 
+
     with open("config.toml", "rb") as f:
         config_data = tomllib.load(f)
         model_name = config_data.get("huggingface", {}).get("embed_model")
@@ -98,4 +99,6 @@ if __name__ == "__main__":
     )
     rag_app = rag_graph.compile()
 
-    agent.launch(pwa=True, share=True)
+    # agent.launch(pwa=True, share=True)
+    agent.launch()
+

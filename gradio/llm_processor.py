@@ -26,6 +26,11 @@ class GradeSchema(BaseModel):
     )
 
 
+# TODO list
+# Add chinese prompt to answer.
+# answer prompt:
+# -- Use differentiation for different types of context
+# -- Generate answers by user's gender, age, etc.
 class LLMProcessor:
     """
     A class to interact with a Language Model (LLM).
