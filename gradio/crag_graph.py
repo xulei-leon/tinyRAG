@@ -49,7 +49,7 @@ from langgraph.checkpoint.memory import MemorySaver, InMemorySaver
 
 
 # my modules
-from crag_retriever import CragRetriever
+from rag_retriever import RagRetriever
 from llm_processor import LLMProcessor
 
 # TODO list
@@ -76,7 +76,7 @@ class CragGraph:
 
     def __init__(
         self,
-        rag_retriever: CragRetriever,
+        rag_retriever: RagRetriever,
         web_retriever: TavilySearchAPIRetriever,
         llm_processor: LLMProcessor,
     ):

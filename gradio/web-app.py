@@ -11,7 +11,7 @@ from langchain_community.retrievers import TavilySearchAPIRetriever
 
 # my modules
 from crag_graph import CragGraph
-from crag_retriever import CragRetriever
+from rag_retriever import RagRetriever
 from llm_processor import LLMProcessor
 
 
@@ -85,19 +85,19 @@ if __name__ == "__main__":
     )
 
     llm_processor = LLMProcessor(llm=llm)
-    rag_retriever = CragRetriever(
+    rag_retriever = RagRetriever(
         model_name=model_name,
         persist_directory=persist_directory,
     )
     web_retriever = TavilySearchAPIRetriever(api_key=tavily_api_key, k=3)
 
     # Create graph
-    rag_graph = CragGraph(
+    crag_graph = CragGraph(
         llm_processor=llm_processor,
         rag_retriever=rag_retriever,
         web_retriever=web_retriever,
     )
-    rag_app = rag_graph.compile()
+    rag_app = crag_graph.compile()
 
     # agent.launch(pwa=True, share=True)
     agent.launch()

@@ -25,7 +25,7 @@ from langchain_community.retrievers import BM25Retriever
 # TODO List
 # Add BM25Retriever and use EnsembleRetriever
 # Add multi type of retriever including mmr and similarity_score_threshold
-class CragRetriever:
+class RagRetriever:
     def __init__(
         self,
         model_name: str = "BAAI/bge-small-zh-v1.5",
@@ -138,7 +138,7 @@ class CragRetriever:
         else:
             return self.vector_store.as_retriever(
                 search_type="similarity_score_threshold",
-                search_kwargs={"score_threshold": 0.5, "k": 3},
+                search_kwargs={"score_threshold": 0.55, "k": 3},
             )
 
 
@@ -190,7 +190,7 @@ def main():
     print(f"persist_directory: {persist_directory}")
 
     print("=== Init retriever ===")
-    retriever = CragRetriever(
+    retriever = RagRetriever(
         model_name=model_name,
         persist_directory=persist_directory,
     )
