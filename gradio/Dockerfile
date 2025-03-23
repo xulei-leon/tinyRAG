@@ -2,10 +2,14 @@ FROM python:3.12.9-slim-bookworm AS builder
 
 # Predownload the model to the /models directory
 WORKDIR /models
-RUN pip install huggingface-hub && \
-    python -c "from huggingface_hub import snapshot_download; \
+RUN pip install huggingface-hub
+RUN python -c "from huggingface_hub import snapshot_download; \
     snapshot_download(repo_id='BAAI/bge-small-zh-v1.5', \
     local_dir='BAAI/bge-small-zh-v1.5', \
+    local_dir_use_symlinks=False)"
+RUN python -c "from huggingface_hub import snapshot_download; \
+    snapshot_download(repo_id='BAAI/bge-reranker-base', \
+    local_dir='BAAI/bge-reranker-base', \
     local_dir_use_symlinks=False)"
 
 # Predownload nltk data to the /nltk_data directory
@@ -48,6 +52,7 @@ RUN pip install --no-cache-dir beautifulsoup4
 RUN pip install --no-cache-dir pypdf
 RUN pip install --no-cache-dir python-magic
 RUN pip install --no-cache-dir unstructured
+RUN pip install --no-cache-dir rank_bm25
 
 # Install other libraries
 RUN pip install --no-cache-dir gradio
