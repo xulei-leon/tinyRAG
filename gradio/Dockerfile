@@ -5,12 +5,10 @@ WORKDIR /models
 RUN pip install huggingface-hub
 RUN python -c "from huggingface_hub import snapshot_download; \
     snapshot_download(repo_id='BAAI/bge-small-zh-v1.5', \
-    local_dir='BAAI/bge-small-zh-v1.5', \
-    local_dir_use_symlinks=False)"
+    local_dir='BAAI/bge-small-zh-v1.5')"
 RUN python -c "from huggingface_hub import snapshot_download; \
     snapshot_download(repo_id='BAAI/bge-reranker-base', \
-    local_dir='BAAI/bge-reranker-base', \
-    local_dir_use_symlinks=False)"
+    local_dir='BAAI/bge-reranker-base')"
 
 # Predownload nltk data to the /nltk_data directory
 RUN pip install nltk && \
@@ -76,12 +74,6 @@ ENV NLTK_DATA=/nltk_data
 COPY --from=builder /models /models
 # Copy the nltk_data from the previous image
 COPY --from=builder /nltk_data /nltk_data
-COPY ./var/nltk_data /tmp/nltk_data
-RUN if [ -z "$(ls -A /nltk_data)" ]; then \
-        mv /tmp/nltk_data /; \
-    else \
-        rm -rf /tmp/nltk_data; \
-    fi
 
 # Copy the current directory contents into the container at /app
 #COPY . /app
