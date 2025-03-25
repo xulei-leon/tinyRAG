@@ -14,7 +14,9 @@ model = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
 [huggingface]
 #embed_model = "sentence-transformers/all-MiniLM-L6-v2"
 embed_model = "/models/BAAI/bge-small-zh-v1.5"
+reranker_model = "/models/BAAI/bge-reranker-base"
 
 [vector]
 files_directory = "/app/var/files"
-persist_directory = "/app/var/vector_store"
+persist_directory = "/app/var/persist"
+collection_name = "crag"

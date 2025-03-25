@@ -168,7 +168,7 @@ class CragGraph:
         question = state["question"]
 
         # Retrieval
-        rag_retrieves = self.rag_retriever.invoke(question)
+        rag_retrieves = self.rag_retriever.query(question)
         print(f"[rag_retrieve] rag retrieve number: {len(rag_retrieves)}")
 
         updated_state = state.copy()

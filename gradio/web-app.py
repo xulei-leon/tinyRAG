@@ -46,19 +46,24 @@ if __name__ == "__main__":
     tavily_api_key = os.getenv("TAVILY_API_KEY")
     linkup_api_key = os.getenv("LINKUP_API_KEY")
 
-
     with open("config.toml", "rb") as f:
         config_data = tomllib.load(f)
-        model_name = config_data.get("huggingface", {}).get("embed_model")
+        embed_model = config_data.get("huggingface", {}).get("embed_model")
+        reranker_model = config_data.get("huggingface", {}).get("reranker_model")
         files_directory = config_data.get("vector", {}).get("files_directory")
         persist_directory = config_data.get("vector", {}).get("persist_directory")
+        collection_name = config_data.get("vector", {}).get("collection_name")
         deepseek_llm_model = config_data.get("deepseek", {}).get("model")
         deepseek_llm_temperature = config_data.get("deepseek", {}).get("temperature")
         deepseek_llm_max_tokens = config_data.get("deepseek", {}).get("max_tokens")
 
-    print(f"model_name: {model_name}")
+    print("=== Init Config ===")
+    print(f"model_name: {embed_model}")
+    print(f"reranker_model: {reranker_model}")
     print(f"files_directory: {files_directory}")
     print(f"persist_directory: {persist_directory}")
+    print(f"collection_name: {collection_name}")
+    print("===================\n")
 
     if not persist_directory:
         print("Error: persist_directory is not defined")
@@ -68,7 +73,7 @@ if __name__ == "__main__":
         print("Error: files_directory is not defined")
         sys.exit(1)
 
-    if not model_name:
+    if not embed_model:
         print("Error: model_name is not defined")
         sys.exit(1)
 
@@ -86,8 +91,11 @@ if __name__ == "__main__":
 
     llm_processor = LLMProcessor(llm=llm)
     rag_retriever = RagRetriever(
-        model_name=model_name,
+        embed_model=embed_model,
+        reranker_model=reranker_model,
         persist_directory=persist_directory,
+        collection_name=collection_name,
+        search_type="mmr",
     )
     web_retriever = TavilySearchAPIRetriever(api_key=tavily_api_key, k=3)
 
@@ -101,4 +109,3 @@ if __name__ == "__main__":
 
     # agent.launch(pwa=True, share=True)
     agent.launch()
-
