@@ -64,6 +64,7 @@ class RagRetriever:
         self.vector_store = self.__init_vector_store()
         self.vector_retriever = None
         self.bm25_retriever = None
+        self.retriever = None
 
     # create vector store
     def build_index(self, files_directory: str):
