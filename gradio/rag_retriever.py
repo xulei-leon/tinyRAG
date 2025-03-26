@@ -32,7 +32,6 @@ class RagRetriever:
         reranker_model: str = "BAAI/bge-reranker-base",
         persist_directory: str = "persist",
         collection_name: str = "rag",
-        search_type: str = "score_threshold",
     ):
         os.makedirs(persist_directory, exist_ok=True)
         os.environ["TRANSFORMERS_OFFLINE"] = "1"  # to avoid downloading models
@@ -51,7 +50,7 @@ class RagRetriever:
         self.bm25_index_file = os.path.join(bm25_directory, "bm25_index.pkl")
 
         self.collection_name = collection_name
-        self.search_type = search_type
+        self.search_type = "mmr"
 
         self.batch_size = 10
         self.chunk_size = 1000
@@ -82,7 +81,12 @@ class RagRetriever:
 
         # Initialize ensemble retriever after both retrievers are inited
         self.retriever = EnsembleRetriever(
-            retrievers=[self.vector_retriever, self.bm25_retriever], weights=[0.5, 0.5]
+            retrievers=[self.vector_retriever, self.bm25_retriever],
+            weights=[0.7, 0.3],
+            lmbda=0.6,
+            rerank_k=self.k,
+            return_sources=True,
+            deduplicate=True,
         )
 
     # query vector store
@@ -191,7 +195,7 @@ class RagRetriever:
         if self.search_type == "mmr":
             search_type = "mmr"
             search_kwargs = {
-                "k": self.k,  # number of results to return
+                "k": self.k*2,  # number of results to return
                 "score_threshold": self.score_threshold,
                 "fetch_k": self.k * 10,
                 "lambda_mult": 0.9,  # lambda value for MMR
@@ -199,7 +203,7 @@ class RagRetriever:
         else:
             search_type = "similarity_score_threshold"
             search_kwargs = {
-                "k": self.k,
+                "k": self.k*2,
                 "score_threshold": self.score_threshold,
             }
 

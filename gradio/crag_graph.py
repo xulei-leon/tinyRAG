@@ -185,7 +185,7 @@ class CragGraph:
         # Score each retrieve document
         for index, document in enumerate(rag_retrieves):
             print(f"=== RAG retrieve [{index}] grade === ")
-            print(document.page_content)
+            print(document.page_content[:200])
 
             if len(document.page_content) < content_size_min:
                 print("Warning: skip RAG retrieves content too less.")
@@ -224,7 +224,7 @@ class CragGraph:
         web_retrieves = self.web_retriever.invoke(question)
         for doc in web_retrieves:
             print("=== web retrieve === ")
-            print(doc.page_content)
+            print(doc.page_content[:200])
 
         updated_state = state.copy()
         updated_state.update({"web_retrieves": web_retrieves})

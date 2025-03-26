@@ -95,7 +95,6 @@ if __name__ == "__main__":
         reranker_model=reranker_model,
         persist_directory=persist_directory,
         collection_name=collection_name,
-        search_type="mmr",
     )
     rag_retriever.load_index()
     web_retriever = TavilySearchAPIRetriever(api_key=tavily_api_key, k=3)
