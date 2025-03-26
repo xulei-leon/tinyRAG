@@ -10,12 +10,6 @@ RUN python -c "from huggingface_hub import snapshot_download; \
     snapshot_download(repo_id='BAAI/bge-reranker-base', \
     local_dir='BAAI/bge-reranker-base')"
 
-# Predownload nltk data to the /nltk_data directory
-RUN pip install nltk && \
-    mkdir -p /nltk_data && \
-    python -c "import nltk; nltk.download('punkt', download_dir='/nltk_data')" && \
-    python -c "import nltk; nltk.download('averaged_perceptron_tagger', download_dir='/nltk_data')"
-
 # Use an official Python runtime as a parent image
 FROM python:3.12.9-slim-bookworm
 
@@ -65,15 +59,30 @@ COPY ./debian.sources /etc/apt/sources.list.d/debian.sources
 RUN apt-get update
 RUN apt-get install -y libmagic1
 
+RUN pip install --no-cache-dir pickle-mixin
+
+# Download nltk data
+ENV NLTK_DATA=/nltk_data
+RUN mkdir -p ${NLTK_DATA}
+ARG NLTK_DATASETS="punkt averaged_perceptron_tagger stopwords"
+
+RUN pip install nltk
+RUN for dataset in ${NLTK_DATASETS}; do \
+    python -c "import nltk; nltk.download('${dataset}', download_dir='${NLTK_DATA}')"; \
+done
+
+COPY ./nltk_data /tmp/nltk_data
+RUN if [ -z "$(ls -A ${NLTK_DATA})" ]; then \
+    cp -rf /tmp/nltk_data /; \
+fi
+RUN rm -rf /tmp/nltk_data
+
 # Define environment variable
 ENV TRANSFORMERS_OFFLINE=1
 ENV HF_DATASETS_OFFLINE=1
-ENV NLTK_DATA=/nltk_data
 
 # Copy the models from the previous image
 COPY --from=builder /models /models
-# Copy the nltk_data from the previous image
-COPY --from=builder /nltk_data /nltk_data
 
 # Copy the current directory contents into the container at /app
 #COPY . /app
