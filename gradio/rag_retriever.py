@@ -66,6 +66,7 @@ class RagRetriever:
         self.vector_retriever = None
         self.bm25_retriever = None
         self.retriever = None
+        self.reranker = self.__init_reranker()
         self.rerank_retriever = None
 
     # create vector store
@@ -97,6 +98,11 @@ class RagRetriever:
             self.rerank_retriever = self.__init_rerank_retriever()
 
         return self.rerank_retriever.invoke(query)
+
+    def query_score(self, question: str, context: str) -> float:
+        pairs = [(question, context)]
+        scores = self.reranker.score(pairs)
+        return round(scores[0], 2)
 
     ###############################################################################
     # Internal functions
@@ -234,11 +240,13 @@ class RagRetriever:
             deduplicate=True,
         )
 
-    def __init_rerank_retriever(self):
-        model = HuggingFaceCrossEncoder(
+    def __init_reranker(self):
+        return HuggingFaceCrossEncoder(
             model_name=self.reranker_model, model_kwargs={"device": "cpu"}
         )
-        compressor = CrossEncoderReranker(model=model, top_n=self.k)
+
+    def __init_rerank_retriever(self):
+        compressor = CrossEncoderReranker(model=self.reranker, top_n=self.k)
         return ContextualCompressionRetriever(
             base_compressor=compressor,
             base_retriever=self.retriever,

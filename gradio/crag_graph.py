@@ -86,7 +86,6 @@ class CragGraph:
         self.web_retriever = web_retriever
         self.graph = None
 
-        self.search_type = "score_threshold"
         self.score_relevant = 0.7
         self.score_weak = 0.5
         self.logger = logging.getLogger(__name__)
@@ -168,7 +167,8 @@ class CragGraph:
         question = state["question"]
 
         # Retrieval
-        rag_retrieves = self.rag_retriever.query_rerank(question)
+        # rag_retrieves = self.rag_retriever.query_rerank(question)
+        rag_retrieves = self.rag_retriever.query(question)
         print(f"[rag_retrieve] rag retrieve number: {len(rag_retrieves)}")
 
         updated_state = state.copy()
@@ -185,19 +185,18 @@ class CragGraph:
         # Score each retrieve document
         for index, document in enumerate(rag_retrieves):
             print(f"=== RAG retrieve [{index}] grade === ")
-            print(f"meta: {document.metadata}")
             print(document.page_content[:200])
 
             if len(document.page_content) < content_size_min:
                 print("Warning: skip RAG retrieves content too less.")
                 continue
 
-            if self.search_type == "score_threshold":
-                score = self.score_relevant
-            else:
-                score = self.llm_processor.grade_relevance(
-                    question=question, context=document.page_content
-                )
+            # score = self.llm_processor.grade_relevance(
+            #     question=question, context=document.page_content
+            # )
+            score = self.rag_retriever.query_score(
+                question=question, context=document.page_content
+            )
 
             if score >= self.score_relevant:
                 print(f"RAG retrieves relevant score {score}.")
@@ -277,7 +276,9 @@ class CragGraph:
         rag_retrieves_weak = state["rag_retrieves_weak"] or []
 
         if len(rag_retrieves_relevant) > 0:
-            print(f"[condition_retrieve_grade] Relevant number: {len(rag_retrieves_relevant)}")
+            print(
+                f"[condition_retrieve_grade] Relevant number: {len(rag_retrieves_relevant)}"
+            )
             return "Relevant"
         elif len(rag_retrieves_weak):
             print(f"[condition_retrieve_grade] Weak number: {len(rag_retrieves_weak)}")
