@@ -168,7 +168,7 @@ class CragGraph:
         question = state["question"]
 
         # Retrieval
-        rag_retrieves = self.rag_retriever.query(question)
+        rag_retrieves = self.rag_retriever.query_rerank(question)
         print(f"[rag_retrieve] rag retrieve number: {len(rag_retrieves)}")
 
         updated_state = state.copy()
@@ -185,6 +185,7 @@ class CragGraph:
         # Score each retrieve document
         for index, document in enumerate(rag_retrieves):
             print(f"=== RAG retrieve [{index}] grade === ")
+            print(f"meta: {document.metadata}")
             print(document.page_content[:200])
 
             if len(document.page_content) < content_size_min:

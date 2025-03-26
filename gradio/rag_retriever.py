@@ -19,8 +19,10 @@ from langchain_community.document_loaders import (
 )
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
-from langchain.retrievers import EnsembleRetriever
+from langchain.retrievers import EnsembleRetriever, ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import CrossEncoderReranker
 from langchain_community.retrievers import BM25Retriever
+from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 
 
 # TODO List
@@ -64,6 +66,7 @@ class RagRetriever:
         self.vector_retriever = None
         self.bm25_retriever = None
         self.retriever = None
+        self.rerank_retriever = None
 
     # create vector store
     def build_index(self, files_directory: str):
@@ -79,20 +82,21 @@ class RagRetriever:
         self.vector_retriever = self.__init_vector_retriever()
         self.bm25_retriever = self.__init_bm25_retriever()
 
-        # Initialize ensemble retriever after both retrievers are inited
-        self.retriever = EnsembleRetriever(
-            retrievers=[self.vector_retriever, self.bm25_retriever],
-            weights=[0.7, 0.3],
-            lmbda=0.6,
-            rerank_k=self.k,
-            return_sources=True,
-            deduplicate=True,
-        )
-
     # query vector store
     def query(self, query: str) -> List[Document]:
-        """Query thevector_ vector store with a text and return the top_k results."""
+        if not self.retriever:
+            self.retriever = self.__init_retriever()
+
         return self.retriever.invoke(query)
+
+    def query_rerank(self, query: str) -> List[Document]:
+        if not self.retriever:
+            self.retriever = self.__init_retriever()
+
+        if not self.rerank_retriever:
+            self.rerank_retriever = self.__init_rerank_retriever()
+
+        return self.rerank_retriever.invoke(query)
 
     ###############################################################################
     # Internal functions
@@ -129,7 +133,7 @@ class RagRetriever:
 
     def __build_bm25(self, documents: List[Document]):
         self.bm25_retriever = BM25Retriever.from_documents(documents)
-        self.bm25_retriever.k = self.k
+        self.bm25_retriever.k = self.k * 2
         with open(self.bm25_index_file, "wb") as f:
             pickle.dump(self.bm25_retriever, f)
         print(f"Added {len(documents)} documents to the bm25 index.")
@@ -137,17 +141,6 @@ class RagRetriever:
     def __init_embedder(self):
         return HuggingFaceEmbeddings(
             model_name=self.embed_model,
-            model_kwargs={"device": "cpu"},
-            encode_kwargs={
-                "batch_size": self.batch_size,
-                "convert_to_numpy": True,
-                "device": "cpu",
-            },
-        )
-
-    def __init_reranker(self):
-        return HuggingFaceEmbeddings(
-            model_name=self.reranker_model,
             model_kwargs={"device": "cpu"},
             encode_kwargs={
                 "batch_size": self.batch_size,
@@ -195,7 +188,7 @@ class RagRetriever:
         if self.search_type == "mmr":
             search_type = "mmr"
             search_kwargs = {
-                "k": self.k*2,  # number of results to return
+                "k": self.k * 2,  # number of results to return
                 "score_threshold": self.score_threshold,
                 "fetch_k": self.k * 10,
                 "lambda_mult": 0.9,  # lambda value for MMR
@@ -203,7 +196,7 @@ class RagRetriever:
         else:
             search_type = "similarity_score_threshold"
             search_kwargs = {
-                "k": self.k*2,
+                "k": self.k * 2,
                 "score_threshold": self.score_threshold,
             }
 
@@ -229,6 +222,27 @@ class RagRetriever:
             bm25_retriever = None
 
         return bm25_retriever
+
+    def __init_retriever(self):
+        # Initialize ensemble retriever after both retrievers are inited
+        return EnsembleRetriever(
+            retrievers=[self.vector_retriever, self.bm25_retriever],
+            weights=[0.7, 0.3],
+            lmbda=0.6,
+            rerank_k=self.k,
+            return_sources=True,
+            deduplicate=True,
+        )
+
+    def __init_rerank_retriever(self):
+        model = HuggingFaceCrossEncoder(
+            model_name=self.reranker_model, model_kwargs={"device": "cpu"}
+        )
+        compressor = CrossEncoderReranker(model=model, top_n=self.k)
+        return ContextualCompressionRetriever(
+            base_compressor=compressor,
+            base_retriever=self.retriever,
+        )
 
 
 ################################################################################
