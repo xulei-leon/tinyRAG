@@ -60,22 +60,21 @@ RUN apt-get update
 RUN apt-get install -y libmagic1
 
 RUN pip install --no-cache-dir pickle-mixin
+RUN pip install langchain-unstructured[all-docs]
+
+# Copy nltk data
+ENV NLTK_DATA=/nltk_data
+COPY ./nltk_data /
 
 # Download nltk data
-ENV NLTK_DATA=/nltk_data
-RUN mkdir -p ${NLTK_DATA}
-ARG NLTK_DATASETS="punkt averaged_perceptron_tagger stopwords"
-
-RUN pip install nltk
-RUN for dataset in ${NLTK_DATASETS}; do \
-    python -c "import nltk; nltk.download('${dataset}', download_dir='${NLTK_DATA}')"; \
-done
-
-COPY ./nltk_data /tmp/nltk_data
-RUN if [ -z "$(ls -A ${NLTK_DATA})" ]; then \
-    cp -rf /tmp/nltk_data /; \
-fi
-RUN rm -rf /tmp/nltk_data
+###############################################################################
+# RUN pip install nltk
+# ARG NLTK_DATASETS="punkt punkt_tab averaged_perceptron_tagger averaged_perceptron_tagger_eng stopwords"
+# RUN mkdir -p ${NLTK_DATA}
+# RUN for dataset in ${NLTK_DATASETS}; do \
+#     python -c "import nltk; nltk.download('${dataset}', download_dir='${NLTK_DATA}')"; \
+# done
+###############################################################################
 
 # Define environment variable
 ENV TRANSFORMERS_OFFLINE=1
