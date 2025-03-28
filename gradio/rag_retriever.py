@@ -7,22 +7,24 @@ import argparse
 import tomllib
 from typing import List
 import pickle
+from dotenv import load_dotenv
+import nltk
+from chromadb.config import Settings as ChromaSettings
 
 # langchain
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain.vectorstores.base import VectorStore
 from langchain_chroma import Chroma
-from chromadb.config import Settings as ChromaSettings
-from langchain_community.document_loaders import (
-    DirectoryLoader,
-    UnstructuredFileLoader,
-)
+from langchain.vectorstores.base import VectorStore
+from langchain_community.vectorstores.utils import filter_complex_metadata
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 from langchain.retrievers import EnsembleRetriever, ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import CrossEncoderReranker
 from langchain_community.retrievers import BM25Retriever
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+
+# my modules
+from rag_file_loader import RagFileLoader
 
 
 # TODO List
@@ -60,6 +62,9 @@ class RagRetriever:
         self.k = 3
         self.score_threshold = 0.55
 
+        # init methods
+        self.file_loader = RagFileLoader()
+
         self.embeddings = self.__init_embedder()
         self.text_splitter = self.__init_text_splitter()
         self.vector_store = self.__init_vector_store()
@@ -70,8 +75,8 @@ class RagRetriever:
         self.rerank_retriever = None
 
     # create vector store
-    def build_index(self, files_directory: str):
-        documents = self.__files_load(files_directory)
+    def build_index(self, directory: str):
+        documents = self.__files_load(directory)
         if not documents:
             print("No documents found. Skipping vector store creation.")
             return
@@ -107,34 +112,20 @@ class RagRetriever:
     ###############################################################################
     # Internal functions
     ###############################################################################
-    def __files_load(self, files_directory: str) -> List[Document]:
+    def __files_load(self, directory: str) -> List[Document]:
         try:
-            loader = DirectoryLoader(
-                files_directory,
-                glob="**/*",
-                loader_cls=UnstructuredFileLoader,
-                loader_kwargs={
-                    "mode": "single",
-                    "strategy": "fast",
-                    "autodetect_encoding": True,
-                },
-                use_multithreading=True,
-                # max_concurrency=2,
-                show_progress=True,
-                recursive=True,
-                silent_errors=True,
-            )
-            documents = loader.load()
-            print(f"Loaded {len(documents)} documents.")
+            documents = RagFileLoader.load(directory=directory)
+            print(f"Loaded {directory} {len(documents)} documents.")
         except Exception as e:
-            print(f"Load {files_directory} error.")
-            documents = None
+            print(f"Load {directory} except {e}.")
+            documents = []
 
         return documents
 
     def __build_vector(self, documents: List[Document]):
         all_splits = self.text_splitter.split_documents(documents)
-        self.vector_store.add_documents(documents=all_splits)
+        filtered_splits = filter_complex_metadata(all_splits)
+        self.vector_store.add_documents(documents=filtered_splits)
         print(f"Added {len(all_splits)} document splits to the vector store.")
 
     def __build_bm25(self, documents: List[Document]):
@@ -273,9 +264,9 @@ def parse_args():
     group.add_argument("-q", "--query", metavar="QUESTION", help="Query")
 
     args = parser.parse_args()
-    if args.create:
-        if not os.path.isdir(args.create):
-            parser.error(f"Do not exist: {args.create}")
+    # if args.create:
+    #     if not os.path.isdir(args.create):
+    #         parser.error(f"Do not exist: {args.create}")
 
     return args
 
@@ -289,26 +280,36 @@ def main():
     except Exception as e:
         sys.exit(2)
 
+    load_dotenv()
+    nltk_data_path = os.getenv("NLTK_DATA")
+    if nltk_data_path:
+        nltk.data.path.append(nltk_data_path)
+
     print("=== Init config ===")
     with open("config.toml", "rb") as f:
         config_data = tomllib.load(f)
-        model_name = config_data.get("huggingface", {}).get("embed_model")
+        embed_model = config_data.get("huggingface", {}).get("embed_model")
+        reranker_model = config_data.get("huggingface", {}).get("reranker_model")
         files_directory = config_data.get("vector", {}).get("files_directory")
         persist_directory = config_data.get("vector", {}).get("persist_directory")
+        collection_name = config_data.get("vector", {}).get("collection_name")
 
-    print(f"model_name: {model_name}")
+
+    print(f"model_name: {embed_model}")
     print(f"files_directory: {files_directory}")
     print(f"persist_directory: {persist_directory}")
 
     print("=== Init retriever ===")
     retriever = RagRetriever(
-        embed_model=model_name,
+        embed_model=embed_model,
+        reranker_model=reranker_model,
         persist_directory=persist_directory,
+        collection_name=collection_name,
     )
-
     if args.create:
         print("=== Create retriever ===")
-        retriever.build_index(files_directory=args.create)
+        directory = args.create or files_directory
+        retriever.build_index(directory=directory)
     elif args.query:
         retriever.load_index()
         print("=== Query retriever ===")
