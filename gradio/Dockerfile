@@ -64,7 +64,7 @@ RUN pip install langchain-unstructured[all-docs]
 
 # Copy nltk data
 ENV NLTK_DATA=/nltk_data
-COPY ./nltk_data /
+COPY ./nltk_data ${NLTK_DATA}
 
 # Download nltk data
 ###############################################################################
