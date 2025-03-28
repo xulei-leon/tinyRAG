@@ -20,3 +20,13 @@ reranker_model = "/models/BAAI/bge-reranker-base"
 files_directory = "/app/var/files"
 persist_directory = "/app/var/persist"
 collection_name = "crag"
+
+[retriever]
+split_chunk_size = 1000
+split_chunk_overlap = 150
+content_size_min = 50
+search_result_num = 3
+score_threshold = 0.55
+rerank_score_relevant = 0.7
+rerank_score_weak = 0.5
+

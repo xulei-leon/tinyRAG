@@ -81,13 +81,19 @@ class CragGraph:
         llm_processor: LLMProcessor,
     ):
         load_dotenv()
+        with open("config.toml", "rb") as f:
+            config_data = tomllib.load(f)
+            self.rerank_score_relevant = config_data.get("retriever", {}).get(
+                "rerank_score_relevant", 0.7
+            )
+            self.score_weak = config_data.get("retriever", {}).get(
+                "rerank_score_weak", 0.5
+            )
+
         self.llm_processor = llm_processor
         self.rag_retriever = rag_retriever
         self.web_retriever = web_retriever
         self.graph = None
-
-        self.score_relevant = 0.7
-        self.score_weak = 0.5
         self.logger = logging.getLogger(__name__)
 
     def compile(self) -> StateGraph:

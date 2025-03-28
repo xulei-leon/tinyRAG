@@ -38,12 +38,12 @@ class RagFileLoader:
             try:
                 loader = UnstructuredLoader(
                     file_path=file_paths,
-                    #                    post_processors=[
-                    #                        "replace_unicode_quotes",
-                    #                        "clean_non_ascii_chars",
-                    #                        "clean_extra_whitespace",
-                    #                        cls.__custom_cleaner,
-                    #                    ],
+                    post_processors=[
+                        replace_unicode_quotes,
+                        clean_non_ascii_chars,
+                        clean_extra_whitespace,
+                        cls.__custom_cleaner,
+                    ],
                 )
                 docs = loader.load()
                 print(f"load {root} files {len(docs)}.")
@@ -55,13 +55,6 @@ class RagFileLoader:
         return documents
 
     @staticmethod
-    def __custom_cleaner(elements: List[Element]) -> List[Element]:
-        processed_elements = []
-
-        for element in elements:
-            if hasattr(element, "text"):
-                element.text = element.text.lower()
-
-            processed_elements.append(element)
-
-        return processed_elements
+    def __custom_cleaner(elements: List) -> List:
+        # Now do nothing
+        return elements

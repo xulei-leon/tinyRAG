@@ -37,9 +37,24 @@ class RagRetriever:
         persist_directory: str = "persist",
         collection_name: str = "rag",
     ):
-        os.makedirs(persist_directory, exist_ok=True)
         os.environ["TRANSFORMERS_OFFLINE"] = "1"  # to avoid downloading models
         os.environ["HF_DATASETS_OFFLINE"] = "1"  # to avoid downloading datasets
+        with open("config.toml", "rb") as f:
+            config_data = tomllib.load(f)
+            self.split_chunk_size = config_data.get("retriever", {}).get(
+                "split_chunk_size", 1000
+            )
+            self.split_chunk_overlap = config_data.get("retriever", {}).get(
+                "split_chunk_overlap", 150
+            )
+            self.search_result_num = config_data.get("retriever", {}).get(
+                "search_result_num", 3
+            )
+            self.score_threshold = config_data.get("retriever", {}).get(
+                "score_threshold", 0.55
+            )
+
+        os.makedirs(persist_directory, exist_ok=True)
 
         self.embed_model = embed_model
         self.reranker_model = reranker_model
@@ -55,12 +70,7 @@ class RagRetriever:
 
         self.collection_name = collection_name
         self.search_type = "mmr"
-
         self.batch_size = 10
-        self.chunk_size = 1000
-        self.chunk_overlap = 150
-        self.k = 3
-        self.score_threshold = 0.55
 
         # init methods
         self.file_loader = RagFileLoader()
@@ -130,7 +140,7 @@ class RagRetriever:
 
     def __build_bm25(self, documents: List[Document]):
         self.bm25_retriever = BM25Retriever.from_documents(documents)
-        self.bm25_retriever.k = self.k * 2
+        self.bm25_retriever.k = self.search_result_num * 2
         with open(self.bm25_index_file, "wb") as f:
             pickle.dump(self.bm25_retriever, f)
         print(f"Added {len(documents)} documents to the bm25 index.")
@@ -148,8 +158,8 @@ class RagRetriever:
 
     def __init_text_splitter(self):
         return RecursiveCharacterTextSplitter(
-            chunk_size=self.chunk_size,
-            chunk_overlap=self.chunk_overlap,
+            chunk_size=self.split_chunk_size,
+            chunk_overlap=self.split_chunk_overlap,
             separators=[
                 "\n\n",
                 "\n",
@@ -167,6 +177,8 @@ class RagRetriever:
                 "？",
                 "；",
                 "：",
+                " ",
+                "",
             ],
         )
 
@@ -185,15 +197,15 @@ class RagRetriever:
         if self.search_type == "mmr":
             search_type = "mmr"
             search_kwargs = {
-                "k": self.k * 2,  # number of results to return
+                "k": self.search_result_num * 2,  # number of results to return
                 "score_threshold": self.score_threshold,
-                "fetch_k": self.k * 10,
+                "fetch_k": self.search_result_num * 10,
                 "lambda_mult": 0.9,  # lambda value for MMR
             }
         else:
             search_type = "similarity_score_threshold"
             search_kwargs = {
-                "k": self.k * 2,
+                "k": self.search_result_num * 2,
                 "score_threshold": self.score_threshold,
             }
 
@@ -226,7 +238,7 @@ class RagRetriever:
             retrievers=[self.vector_retriever, self.bm25_retriever],
             weights=[0.7, 0.3],
             lmbda=0.6,
-            rerank_k=self.k,
+            rerank_k=self.search_result_num,
             return_sources=True,
             deduplicate=True,
         )
@@ -237,7 +249,9 @@ class RagRetriever:
         )
 
     def __init_rerank_retriever(self):
-        compressor = CrossEncoderReranker(model=self.reranker, top_n=self.k)
+        compressor = CrossEncoderReranker(
+            model=self.reranker, top_n=self.search_result_num
+        )
         return ContextualCompressionRetriever(
             base_compressor=compressor,
             base_retriever=self.retriever,
@@ -280,11 +294,6 @@ def main():
     except Exception as e:
         sys.exit(2)
 
-    load_dotenv()
-    nltk_data_path = os.getenv("NLTK_DATA")
-    if nltk_data_path:
-        nltk.data.path.append(nltk_data_path)
-
     print("=== Init config ===")
     with open("config.toml", "rb") as f:
         config_data = tomllib.load(f)
@@ -293,7 +302,6 @@ def main():
         files_directory = config_data.get("vector", {}).get("files_directory")
         persist_directory = config_data.get("vector", {}).get("persist_directory")
         collection_name = config_data.get("vector", {}).get("collection_name")
-
 
     print(f"model_name: {embed_model}")
     print(f"files_directory: {files_directory}")
