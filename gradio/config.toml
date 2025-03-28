@@ -18,7 +18,7 @@ reranker_model = "/models/BAAI/bge-reranker-base"
 
 [vector]
 files_directory = "/app/var/files"
-persist_directory = "/app/var/persist"
+persist_directory = "/app/var/data_store"
 collection_name = "crag"
 
 [retriever]

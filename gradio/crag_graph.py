@@ -83,7 +83,7 @@ class CragGraph:
         load_dotenv()
         with open("config.toml", "rb") as f:
             config_data = tomllib.load(f)
-            self.rerank_score_relevant = config_data.get("retriever", {}).get(
+            self.score_relevant = config_data.get("retriever", {}).get(
                 "rerank_score_relevant", 0.7
             )
             self.score_weak = config_data.get("retriever", {}).get(

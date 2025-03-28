@@ -38,6 +38,9 @@ class RagFileLoader:
             try:
                 loader = UnstructuredLoader(
                     file_path=file_paths,
+                    chunking_strategy="basic",
+                    max_characters=1000000,
+                    include_orig_elements=False,
                     post_processors=[
                         replace_unicode_quotes,
                         clean_non_ascii_chars,

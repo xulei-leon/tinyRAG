@@ -105,6 +105,12 @@ class RagRetriever:
 
         return self.retriever.invoke(query)
 
+    def query_vector(self, query: str) -> List[Document]:
+        return self.vector_retriever.invoke(query)
+
+    def query_bm25(self, query: str) -> List[Document]:
+        return self.bm25_retriever.invoke(query)
+
     def query_rerank(self, query: str) -> List[Document]:
         if not self.retriever:
             self.retriever = self.__init_retriever()
@@ -324,15 +330,27 @@ def main():
         query = args.query.encode("utf-8").decode("utf-8")
         print(f"Question: {query}\n")
 
-        results = retriever.query(query)
-        if not results:
-            print("=== No results ===")
-            return
+        results = retriever.query_vector(query)
+        if results:
+            for doc in results:
+                print(" = query_vector results =")
+                print(doc.page_content)
+                print("\n")
 
-        for doc in results:
-            print(" = Answer =")
-            print(doc.page_content)
-            print("\n")
+        results = retriever.query_bm25(query)
+        if results:
+            for doc in results:
+                print(" = query_bm25 results =")
+                print(doc.page_content)
+                print("\n")
+
+        results = retriever.query(query)
+        if results:
+            for doc in results:
+                print(" = query results =")
+                print(doc.page_content)
+                print("\n")
+
     else:
         print("=== No action ===")
 
