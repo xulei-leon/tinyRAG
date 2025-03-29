@@ -111,6 +111,7 @@ class RagRetriever:
     def query_bm25(self, query: str) -> List[Document]:
         return self.bm25_retriever.invoke(query)
 
+    # the rerank delay will be long
     def query_rerank(self, query: str) -> List[Document]:
         if not self.retriever:
             self.retriever = self.__init_retriever()
@@ -123,7 +124,8 @@ class RagRetriever:
     def query_score(self, question: str, context: str) -> float:
         pairs = [(question, context)]
         scores = self.reranker.score(pairs)
-        return round(scores[0], 2)
+        # only have one score result
+        return scores[0]
 
     ###############################################################################
     # Internal functions
@@ -147,7 +149,7 @@ class RagRetriever:
 
     def __build_bm25(self, documents: List[Document]):
         self.bm25_retriever = BM25Retriever.from_documents(documents)
-        self.bm25_retriever.k = self.search_result_num * 2
+        self.bm25_retriever.k = int(self.search_result_num * 1.5)
         with open(self.bm25_index_file, "wb") as f:
             pickle.dump(self.bm25_retriever, f)
         print(f"Added {len(documents)} documents to the bm25 index.")
@@ -204,15 +206,15 @@ class RagRetriever:
         if self.search_type == "mmr":
             search_type = "mmr"
             search_kwargs = {
-                "k": self.search_result_num * 2,  # number of results to return
+                "k": int(self.search_result_num * 2),  # number of results to return
                 "score_threshold": self.score_threshold,
-                "fetch_k": self.search_result_num * 10,
+                "fetch_k": int(self.search_result_num * 10),
                 "lambda_mult": 0.9,  # lambda value for MMR
             }
         else:
             search_type = "similarity_score_threshold"
             search_kwargs = {
-                "k": self.search_result_num * 2,
+                "k": int(self.search_result_num * 2),
                 "score_threshold": self.score_threshold,
             }
 
@@ -244,8 +246,8 @@ class RagRetriever:
         return EnsembleRetriever(
             retrievers=[self.vector_retriever, self.bm25_retriever],
             weights=[0.7, 0.3],
-            lmbda=0.6,
-            rerank_k=self.search_result_num,
+            lmbda=0.9,
+            rerank_k=int(self.search_result_num * 2),
             return_sources=True,
             deduplicate=True,
         )

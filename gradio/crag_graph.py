@@ -83,6 +83,9 @@ class CragGraph:
         load_dotenv()
         with open("config.toml", "rb") as f:
             config_data = tomllib.load(f)
+            self.search_result_num = config_data.get("retriever", {}).get(
+                "search_result_num", 3
+            )
             self.score_relevant = config_data.get("retriever", {}).get(
                 "rerank_score_relevant", 0.7
             )
@@ -190,6 +193,14 @@ class CragGraph:
 
         # Score each retrieve document
         for index, document in enumerate(rag_retrieves):
+            #
+            if (
+                len(rag_retrieves_relevant) >= self.search_result_num / 2
+                or len(rag_retrieves_relevant) + len(rag_retrieves_weak)
+                >= self.search_result_num
+            ):
+                break
+
             print(f"=== RAG retrieve [{index}] grade === ")
             print(document.page_content[:200])
 

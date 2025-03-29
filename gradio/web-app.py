@@ -78,6 +78,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     llm = ChatDeepSeek(
+        api_key=deepseek_api_key,
         model=deepseek_llm_model,
         temperature=deepseek_llm_temperature,
         max_tokens=deepseek_llm_max_tokens,
@@ -86,7 +87,6 @@ if __name__ == "__main__":
         frequency_penalty=0.7,
         presence_penalty=0.5,
         max_retries=3,
-        api_key=deepseek_api_key,
     )
 
     llm_processor = LLMProcessor(llm=llm)

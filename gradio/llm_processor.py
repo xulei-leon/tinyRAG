@@ -118,7 +118,7 @@ class LLMProcessor:
     ################################################################################
     def generate_answer(self, question: str, context: str) -> str:
         llm = self.llm
-        json_key = "rewrite_document"
+        json_key = "answer"
         system_role = "Role: Generate Answer Specialist"
         system_instruction = self.__text_instruction()
         system_response_format = self.__json_response_format(json_key=json_key)
@@ -139,16 +139,21 @@ class LLMProcessor:
 
         # print("=== rewrite_document prompt template ===\n")
         # prompt.pretty_print()
-
-        rewriter = prompt | llm | JsonOutputParser()
+        answer_result = None
         try:
-            doc = rewriter.invoke({"question": question, "context": context})
-            rewrite_result = doc[json_key]
+            rewriter = prompt | llm | JsonOutputParser()
+            result = rewriter.invoke({"question": question, "context": context})
+            print(f"rewriter result: {result}")
+            if type(result[json_key]) is str:
+                answer_result = result[json_key]
+            else:
+                answer_result = context
         except KeyError:
-            logging.error(f"KeyError: {json_key} not found in response")
-            rewrite_result = context
+            print(f"LLM answer KeyError: key {json_key} not found in result")
+        except Exception as e:
+            print(f"LLM answer except: {e}")
 
-        return rewrite_result or context
+        return answer_result or context
 
     ################################################################################
     ### Grade context relevance
@@ -209,7 +214,7 @@ class LLMProcessor:
 
     @staticmethod
     def __json_response_format(json_key: str) -> str:
-        return f"**Format Requirement**:\n- Return a JSON object.\n- Key: {json_key}\n- Value: The improved document"
+        return f"**Format Requirement**:\n- Return a JSON object.\n- Key: {json_key}\n- Value: Must a text string."
 
     @staticmethod
     def __score_system_instruction(type: str) -> str:
