@@ -17,17 +17,22 @@ from langchain_unstructured.document_loaders import UnstructuredLoader
 
 #
 class RagFileLoader:
-    @classmethod
-    def load(cls, directory: str) -> list[Document]:
-        return cls.load_as_single(directory=directory)
+    @staticmethod
+    def list_files(directory: str) -> tuple[list[str], int]:
+        all_files = []
+        for root, _, files in os.walk(directory):
+            for file in files:
+                path = os.path.join(root, file)
+                all_files.append(path)
+        return all_files
 
     @classmethod
-    def load_as_single(cls, directory: str) -> list[Document]:
+    def load_files(cls, file_paths: []):
+        return cls.__load_files(file_paths=file_paths, mode="basic")
+
+    @classmethod
+    def load_directory(cls, directory: str) -> list[Document]:
         return cls.__load_directory(directory=directory, mode="basic")
-
-    @classmethod
-    def load_as_chunk(cls, directory: str) -> list[Document]:
-        return cls.__load_directory(directory=directory, mode=None)
 
     @classmethod
     def __load_directory(cls, directory: str, mode: str) -> list[Document]:

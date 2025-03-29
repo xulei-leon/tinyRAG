@@ -6,10 +6,13 @@ import sys
 import argparse
 import tomllib
 from typing import List
-import pickle
 from dotenv import load_dotenv
+from tqdm import tqdm
+
+# index
 import nltk
 from chromadb.config import Settings as ChromaSettings
+import pickle
 
 # langchain
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -85,18 +88,32 @@ class RagRetriever:
         self.rerank_retriever = None
 
     # create vector store
-    def build_index(self, directory: str):
-        documents = self.__files_load(directory)
-        if not documents:
-            print("No documents found. Skipping vector store creation.")
-            return
+    def build_vector(self, directory: str):
+        all_files = RagFileLoader.list_files(directory)
+        num_files = len(all_files)
+        print(f"Found {num_files} files")
 
-        self.__build_vector(documents)
-        self.__build_bm25(documents)
+        for i in tqdm(range(0, num_files, self.batch_size), desc="load file batch"):
+            print(f"Buid index from file {i} to {i + self.batch_size}")
+            batch_files = all_files[i : i + self.batch_size]
+            documents = self.__load_files(batch_files)
+            if not documents:
+                print("No documents found. Skipping index creation.")
+                continue
+
+            self.__build_vector(documents)
+
+    def build_bm25(self, directory: str):
+        documents = self.__load_directory(directory)
+        if documents:
+            self.__build_bm25(documents)
+        else:
+            print("No documents found. Skipping vector store creation.")
 
     def load_index(self):
         self.vector_retriever = self.__init_vector_retriever()
         self.bm25_retriever = self.__init_bm25_retriever()
+        self.bm25_retriever.k = int(self.search_result_num * 1.5)
 
     # query vector store
     def query(self, query: str) -> List[Document]:
@@ -128,16 +145,25 @@ class RagRetriever:
         return scores[0]
 
     ###############################################################################
-    # Internal functions
+    # Inteload_filesions
     ###############################################################################
-    def __files_load(self, directory: str) -> List[Document]:
+    def __load_files(self, file_paths: List[str]) -> List[Document]:
+        documents = []
         try:
-            documents = RagFileLoader.load(directory=directory)
-            if documents:
-                print(f"Loaded {directory} {len(documents)} documents.")
+            documents = RagFileLoader.load_files(file_paths=file_paths)
+            print(f"Loaded {len(file_paths)} files return {len(documents)} documents.")
         except Exception as e:
-            print(f"Load {directory} except {e}.")
-            documents = []
+            print(f"Load files except: {e}.")
+
+        return documents
+
+    def __load_directory(self, directory: str) -> List[Document]:
+        documents = []
+        try:
+            documents = RagFileLoader.load_directory(directory=directory)
+            print(f"Loaded {directory} return {len(documents)} documents.")
+        except Exception as e:
+            print(f"Load {directory} except: {e}.")
 
         return documents
 
@@ -149,10 +175,9 @@ class RagRetriever:
 
     def __build_bm25(self, documents: List[Document]):
         self.bm25_retriever = BM25Retriever.from_documents(documents)
-        self.bm25_retriever.k = int(self.search_result_num * 1.5)
+        print(f"Added {len(documents)} documents to {self.bm25_index_file}.")
         with open(self.bm25_index_file, "wb") as f:
             pickle.dump(self.bm25_retriever, f)
-        print(f"Added {len(documents)} documents to the bm25 index.")
 
     def __init_embedder(self):
         return HuggingFaceEmbeddings(
@@ -272,25 +297,25 @@ class RagRetriever:
 ################################################################################
 def parse_args():
     parser = argparse.ArgumentParser(
-        prog="crag_retriever.py",
-        description="CRAG command",
+        prog="rag_retriever.py",
+        description="RAG command",
         epilog="Example:\n"
-        "  create: app.py --create ./files\n"
+        "  vector : app.py --vector ./files\n"
+        "  bm25: app.py --bm25 ./files\n"
         "  query: app.py --query 'My question?'",
         formatter_class=argparse.RawTextHelpFormatter,
     )
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
-        "-c", "--create", metavar="PATH", help="Create vector from files"
+        "-v", "--vector", metavar="PATH", help="Create vector from directory"
+    )
+    group.add_argument(
+        "-b", "--bm25", metavar="PATH", help="Create BM25 from directory"
     )
     group.add_argument("-q", "--query", metavar="QUESTION", help="Query")
 
     args = parser.parse_args()
-    # if args.create:
-    #     if not os.path.isdir(args.create):
-    #         parser.error(f"Do not exist: {args.create}")
-
     return args
 
 
@@ -323,12 +348,16 @@ def main():
         persist_directory=persist_directory,
         collection_name=collection_name,
     )
-    if args.create:
-        print("=== Create retriever ===")
-        directory = args.create or files_directory
-        retriever.build_index(directory=directory)
+    if args.vector:
+        print("=== Create vector ===")
+        directory = args.vector or files_directory
+        retriever.build_vector(directory=directory)
+    elif args.bm25:
+        print("=== Create bm25 ===")
+        directory = args.bm25 or files_directory
+        retriever.build_bm25(directory=directory)
     elif args.query:
-        retriever.load_index()
+        retriever.load_index(_with_directory)
         print("=== Query retriever ===")
         query = args.query.encode("utf-8").decode("utf-8")
         print(f"Question: {query}\n")
