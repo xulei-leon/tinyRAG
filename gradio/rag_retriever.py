@@ -131,7 +131,8 @@ class RagRetriever:
     def __files_load(self, directory: str) -> List[Document]:
         try:
             documents = RagFileLoader.load(directory=directory)
-            print(f"Loaded {directory} {len(documents)} documents.")
+            if documents:
+                print(f"Loaded {directory} {len(documents)} documents.")
         except Exception as e:
             print(f"Load {directory} except {e}.")
             documents = []
