@@ -110,6 +110,16 @@ class RagRetriever:
         else:
             print("No documents found. Skipping vector store creation.")
 
+    def show_document(self, directory: str):
+        documents = self.__load_directory(directory)
+        if not documents:
+            print("No documents found.")
+            return
+
+        for i in tqdm(range(0, len(documents), 1), desc="load files"):
+            print(f"\nLoad {i} file: {documents[i].metadata['source']}")
+            print(f"Load {i} file content: {documents[i].page_content[:500]}")
+
     def load_index(self):
         self.vector_retriever = self.__init_vector_retriever()
         self.bm25_retriever = self.__init_bm25_retriever()
@@ -139,10 +149,17 @@ class RagRetriever:
         return self.rerank_retriever.invoke(query)
 
     def query_score(self, question: str, context: str) -> float:
+        # reranker only support input max 512 tokens
+        question = question[: min(512, len(question))]
+        context = context[: min(512, len(context))]
         pairs = [(question, context)]
-        scores = self.reranker.score(pairs)
-        # only have one score result
-        return scores[0]
+        try:
+            scores = self.reranker.score(pairs)
+            # only have one score result
+            return scores[0]
+        except Exception as e:
+            print(f"Score error: {e}")
+            return 0.0
 
     ###############################################################################
     # Inteload_filesions
@@ -302,6 +319,7 @@ def parse_args():
         epilog="Example:\n"
         "  vector : app.py --vector ./files\n"
         "  bm25: app.py --bm25 ./files\n"
+        "  show: app.py --show ./files\n"
         "  query: app.py --query 'My question?'",
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -312,6 +330,9 @@ def parse_args():
     )
     group.add_argument(
         "-b", "--bm25", metavar="PATH", help="Create BM25 from directory"
+    )
+    group.add_argument(
+        "-s", "--show", metavar="PATH", help="Show document content from directory"
     )
     group.add_argument("-q", "--query", metavar="QUESTION", help="Query")
 
@@ -356,6 +377,10 @@ def main():
         print("=== Create bm25 ===")
         directory = args.bm25 or files_directory
         retriever.build_bm25(directory=directory)
+    elif args.show:
+        print("=== Show documents ===")
+        directory = args.show or files_directory
+        retriever.show_document(directory=directory)
     elif args.query:
         retriever.load_index(_with_directory)
         print("=== Query retriever ===")

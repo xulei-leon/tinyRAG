@@ -68,7 +68,7 @@ class RagFileLoader:
                     include_orig_elements=False,
                     post_processors=[
                         replace_unicode_quotes,
-                        clean_non_ascii_chars,
+                        # clean_non_ascii_chars, ## Warning: this will remove all chinese characters
                         clean_extra_whitespace,
                         cls.__custom_cleaner,
                     ],
@@ -88,7 +88,6 @@ class RagFileLoader:
 
     @staticmethod
     def __is_text_file(filename):
-        allowed_extensions = ['.pdf', '.doc', '.docx', '.ppt', '.pptx']
+        allowed_extensions = [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt", ".html"]
         _, ext = os.path.splitext(filename)
         return ext.lower() in allowed_extensions
-
