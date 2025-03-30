@@ -50,17 +50,19 @@ RUN pip install --no-cache-dir rank_bm25
 RUN pip install --no-cache-dir gradio
 
 # Install Hugging Face model
-RUN pip install --no-cache-dir torch==2.6.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu && \
-    pip install --no-cache-dir sentence-transformers --no-deps && \
-    pip install --no-cache-dir transformers tqdm scikit-learn numpy && \
-    pip install --no-cache-dir langchain-huggingface --no-deps
+RUN pip install --no-cache-dir torch==2.6.0+cpu torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir sentence-transformers --no-deps
+RUN pip install --no-cache-dir transformers tqdm scikit-learn numpy
+RUN pip install --no-cache-dir langchain-huggingface --no-deps
 
 COPY ./debian.sources /etc/apt/sources.list.d/debian.sources
 RUN apt-get update
 RUN apt-get install -y libmagic1
 
 RUN pip install --no-cache-dir pickle-mixin
-RUN pip install langchain-unstructured[all-docs]
+RUN pip install "unstructured[pdf, doc, docx, ppt, pptx]"
+RUN pip install "langchain-unstructured[all-docs]"
+RUN apt-get install -y libreoffice
 
 # Copy nltk data
 ENV NLTK_DATA=/nltk_data

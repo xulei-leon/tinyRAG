@@ -55,23 +55,29 @@ class RagFileLoader:
 
     @classmethod
     def __load_files(cls, file_paths: [], mode: str) -> list[Document]:
-        try:
-            loader = UnstructuredLoader(
-                file_path=file_paths,
-                chunking_strategy=mode,
-                max_characters=1000000,
-                include_orig_elements=False,
-                post_processors=[
-                    replace_unicode_quotes,
-                    clean_non_ascii_chars,
-                    clean_extra_whitespace,
-                    cls.__custom_cleaner,
-                ],
-            )
-            documents = loader.load()
-        except Exception as e:
-            print(f"load {root} except: {e}.")
-            documents = []
+        documents = []
+        for file_path in file_paths:
+            if not cls.__is_text_file(file_path):
+                continue
+
+            try:
+                loader = UnstructuredLoader(
+                    file_path=file_path,
+                    chunking_strategy=mode,
+                    max_characters=1000000,
+                    include_orig_elements=False,
+                    post_processors=[
+                        replace_unicode_quotes,
+                        clean_non_ascii_chars,
+                        clean_extra_whitespace,
+                        cls.__custom_cleaner,
+                    ],
+                )
+                document = loader.load()
+                documents.extend(document)
+            except Exception as e:
+                print(f"load {file_path} except: {e}.")
+                continue
 
         return documents
 
@@ -79,3 +85,10 @@ class RagFileLoader:
     def __custom_cleaner(elements: List) -> List:
         # Now do nothing
         return elements
+
+    @staticmethod
+    def __is_text_file(filename):
+        allowed_extensions = ['.pdf', '.doc', '.docx', '.ppt', '.pptx']
+        _, ext = os.path.splitext(filename)
+        return ext.lower() in allowed_extensions
+
