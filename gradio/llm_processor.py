@@ -45,20 +45,26 @@ class LLMProcessor:
     def rewrite_question(self, question: str) -> str:
         llm = self.llm
         json_key = "rewrite_question"
-        system_role = "Role: Question Optimization"
-        system_instruction = self.__text_instruction()
-        system_response_format = self.__json_response_format(json_key=json_key)
-        user_instruction = "Rewrite this question to a better version that is optimized for vectorstore retrieval."
+
+        system_role = "## Role: Question Optimization"
+        system_instruction = self.__output_instruction()
+        system_response_format = self.__json_output_format(json_key=json_key)
+        user_profile = self.__user_profile()
+        user_instruction = (
+            "Rewrite, optimise and extend the questions users ask, based on the personal information they provide.\n"
+            "This helps us to understand their needs better and provide more detailed responses.\n"
+            "You can add more details to the question, but do not change the original meaning."
+        )
 
         prompt = ChatPromptTemplate.from_messages(
             [
                 (
                     "system",
-                    f"{system_role}\n{system_instruction}\n{system_response_format}",
+                    f"{system_role}\n\n{system_instruction}\n{system_response_format}",
                 ),
                 (
                     "human",
-                    f"{user_instruction}\n\nOriginal question:\n{{question}}",
+                    f"{user_profile}\n\n{user_instruction}\n\nOriginal question:\n{{question}}",
                 ),
             ]
         )
@@ -82,9 +88,10 @@ class LLMProcessor:
     def rewrite_retrieval(self, question: str, context: str) -> str:
         llm = self.llm
         json_key = "rewrite_retrieval"
-        system_role = "Role: Documents Optimization Specialist"
-        system_instruction = self.__text_instruction()
-        system_response_format = self.__json_response_format(json_key=json_key)
+
+        system_role = "## Role: Documents Optimization Specialist"
+        system_instruction = self.__output_instruction()
+        system_response_format = self.__json_output_format(json_key=json_key)
         user_instruction = "Convert the retrieved document into a more optimised version, rewrite the parts of the document that are relevant to the user's problem, and output them."
 
         prompt = ChatPromptTemplate.from_messages(
@@ -119,10 +126,17 @@ class LLMProcessor:
     def generate_answer(self, question: str, context: str) -> str:
         llm = self.llm
         json_key = "answer"
-        system_role = "Role: Generate Answer Specialist"
-        system_instruction = self.__text_instruction()
-        system_response_format = self.__json_response_format(json_key=json_key)
-        user_instruction = "Based on the following context, answer the user's question."
+
+        system_role = "## Role: Generate Answer Specialist"
+        system_instruction = self.__output_instruction()
+        system_response_format = self.__json_output_format(json_key=json_key)
+        user_profile = self.__user_profile()
+        user_instruction = (
+            "Answer the question based on the user's profile and the context provided.\n"
+            "If the context does not provide enough information or is not relevant to the question, please answer based on your knowledge.\n"
+            "Please answer questions from users in Chinese. \n"
+            "Use the simple and clear language. The output string length should be between 50 and 200 characters."
+        )
 
         prompt = ChatPromptTemplate.from_messages(
             [
@@ -132,7 +146,7 @@ class LLMProcessor:
                 ),
                 (
                     "human",
-                    f"{user_instruction}\n\nUser question:\n{{question}}\n\nnContext:\n\n {{context}}",
+                    f"{user_profile}\n\n{user_instruction}\n\nUser question:\n{{question}}\n\nnContext:\n\n {{context}}",
                 ),
             ]
         )
@@ -169,7 +183,7 @@ class LLMProcessor:
     def __grade_context(self, question: str, context: str, grader_type: str) -> float:
         llm = self.llm
 
-        system_role = "Role: Scoring Expert"
+        system_role = "## Role: Scoring Expert"
         system_instruction = self.__score_system_instruction(grader_type)
         system_response_format = self.__score_response_format()
         user_instruction = self.__score_user_instruction(grader_type)
@@ -178,7 +192,7 @@ class LLMProcessor:
             [
                 (
                     "system",
-                    f"{system_role}\n{system_instruction}\n{system_response_format}",
+                    f"{system_role}\n\n{system_instruction}\n\n{system_response_format}",
                 ),
                 (
                     "human",
@@ -200,21 +214,6 @@ class LLMProcessor:
             score = 7
 
         return score
-
-    @staticmethod
-    def __text_instruction() -> str:
-        return (
-            "Respond to the request:\n"
-            "1. Direct response to core content\n"
-            "2. Disable examples/extended descriptions\n"
-            "3. Use simple sentence structure\n"
-            "4. Omit non-critical details\n\n"
-            "Current Scenario: Rapid Response Mode"
-        )
-
-    @staticmethod
-    def __json_response_format(json_key: str) -> str:
-        return f"**Format Requirement**:\n- Return a JSON object.\n- Key: {json_key}\n- Value: Must a text string."
 
     @staticmethod
     def __score_system_instruction(type: str) -> str:
@@ -248,3 +247,44 @@ class LLMProcessor:
     @staticmethod
     def __score_response_format() -> str:
         return f"Please return a score between 0.0-1.0"
+
+    @staticmethod
+    def __output_instruction() -> str:
+        return (
+            "## Output instruction\n"
+            "1. Follow the instructions strictly\n"
+            "2. Use simple sentence structure\n"
+            "3. Use clear and concise language\n"
+            "4. Avoid unnecessary details\n"
+            "5. Avoid excessive examples\n"
+            "6. Avoid excessive explanations\n"
+            "7. Respond quickly and accurately\n"
+        )
+
+    @staticmethod
+    def __json_output_format(json_key: str) -> str:
+        return (
+            "## Output Format Description\n"
+            "- Output a strict JSON format object.\n"
+            "- Note: Do not include any other text or explanation.\n"
+            f"- Key: {json_key}\n"
+            "- Value: Must a text string.\n"
+            "## Output Format Example\n"
+            "{\n"
+            f'  "{json_key}": "This is a example string"\n'
+            "}\n"
+        )
+
+    @staticmethod
+    def __user_profile() -> str:
+        return (
+            "## User Profile\n"
+            "Age: 55 to 65 years\n"
+            "Sex: Male\n"
+            "Income: Good\n"
+            "Job: Retired\n"
+            "Lifestyle: Moderately active, enjoys walking. Active in the community. Follows doctor's advice on health.\n"
+            "Health problems: Occasional insomnia, low energy\n"
+            "Health goals: Maintain good health. Improve sleep quality and maintain an active lifestyle.\n"
+            "Seeking Information: Trusted source of information, willing to listen to family and friends who share their health care experiences.\n"
+        )
