@@ -50,10 +50,11 @@ RUN pip install --no-cache-dir rank_bm25
 RUN pip install --no-cache-dir gradio
 
 # Install Hugging Face model
-RUN pip install --no-cache-dir torch==2.6.0+cpu torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir torch==2.6.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir sentence-transformers --no-deps
 RUN pip install --no-cache-dir transformers tqdm scikit-learn numpy
 RUN pip install --no-cache-dir langchain-huggingface --no-deps
+RUN pip install torchvision --extra-index-url https://download.pytorch.org/whl/cpu
 
 COPY ./debian.sources /etc/apt/sources.list.d/debian.sources
 RUN apt-get update
