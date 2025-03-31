@@ -152,11 +152,13 @@ class RagRetriever:
         # reranker only support input max 512 tokens
         question = question[: min(512, len(question))]
         context = context[: min(512, len(context))]
+
         pairs = [(question, context)]
         try:
             scores = self.reranker.score(pairs)
             # only have one score result
-            return scores[0]
+            score = scores[0]
+            return score
         except Exception as e:
             print(f"Score error: {e}")
             return 0.0

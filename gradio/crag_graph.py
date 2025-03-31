@@ -63,8 +63,6 @@ class RagState(TypedDict):
     question: str
     answer: str
     rag_retrieves: List[Document]
-    rag_retrieves_relevant: List[Document]
-    rag_retrieves_weak: List[Document]
     web_retrieves: List[Document]
     # documents: Annotated[list, operator.add]
 
@@ -87,10 +85,7 @@ class CragGraph:
                 "search_result_num", 3
             )
             self.score_relevant = config_data.get("retriever", {}).get(
-                "rerank_score_relevant", 0.7
-            )
-            self.score_weak = config_data.get("retriever", {}).get(
-                "rerank_score_weak", 0.5
+                "rerank_score_relevant", 0.55
             )
 
         self.llm_processor = llm_processor
@@ -187,49 +182,38 @@ class CragGraph:
     def __node_rag_retrieve_grade(self, state: RagState) -> RagState:
         question = state["question"]
         rag_retrieves = state["rag_retrieves"]
-        rag_retrieves_relevant = []
-        rag_retrieves_weak = []
         content_size_min = 50
 
-        # Score each retrieve document
-        for index, document in enumerate(rag_retrieves):
-            #
-            if (
-                len(rag_retrieves_relevant) >= self.search_result_num / 2
-                or len(rag_retrieves_relevant) + len(rag_retrieves_weak)
-                >= self.search_result_num
-            ):
-                break
-
-            print(f"=== RAG retrieve [{index}] grade === ")
-            print(document.page_content[:200])
-
-            if len(document.page_content) < content_size_min:
-                print("Warning: skip RAG retrieves content too less.")
-                continue
-
-            # score = self.llm_processor.grade_relevance(
-            #     question=question, context=document.page_content
-            # )
+        # Filter relevant retrieves
+        relevants_with_score = []
+        for doc in rag_retrieves:
+            print(f"=== RAG retrieve score === ")
+            print(doc.page_content[:200])
             score = self.rag_retriever.query_score(
-                question=question, context=document.page_content
+                question=question, context=doc.page_content
             )
 
-            if score >= self.score_relevant:
-                print(f"RAG retrieves relevant score {score}.")
-                rag_retrieves_relevant.append(document)
-            elif score >= self.score_weak:
-                print(f"RAG retrieves weak score {score}.")
-                rag_retrieves_weak.append(document)
-            else:
-                print(f"Warning: skip RAG retrieves content score {score}.")
+            if len(doc.page_content) < content_size_min:
+                score = score * 0.8
+
+            if score < self.score_relevant:
+                print(f"[rag_retrieve_grade] relevant score: {score} is low")
+                continue
+
+            print(f"[rag_retrieve_grade] relevant score: {score}")
+            relevants_with_score.append((doc, score))
+
+        # sort relevant retrieves by score in descending order
+        if len(relevants_with_score) > 0:
+            relevants_with_score.sort(key=lambda doc: doc[1], reverse=True)
+            rag_retrieves = [
+                doc[0] for doc in relevants_with_score[: self.search_result_num]
+            ]
 
         updated_state = state.copy()
         updated_state.update(
             {
-                "rag_retrieves": [],
-                "rag_retrieves_relevant": rag_retrieves_relevant,
-                "rag_retrieves_weak": rag_retrieves_weak,
+                "rag_retrieves": rag_retrieves,
             }
         )
         return updated_state
@@ -249,16 +233,12 @@ class CragGraph:
 
     def __node_generate_answer(self, state: RagState) -> RagState:
         question = state["question"]
-        rag_retrieves_relevant = state.get("rag_retrieves_relevant", None)
-        rag_retrieves_weak = state.get("rag_retrieves_weak", None)
+        rag_retrieves = state.get("rag_retrieves", None)
         web_retrieves = state.get("web_retrieves", None)
 
         context = ""
-        if rag_retrieves_relevant:
-            context += "\n".join(doc.page_content for doc in rag_retrieves_relevant)
-
-        if rag_retrieves_weak:
-            context += "\n".join([doc.page_content for doc in rag_retrieves_weak])
+        if rag_retrieves:
+            context += "\n".join(doc.page_content for doc in rag_retrieves)
 
         if web_retrieves:
             context += "\n".join([doc.page_content for doc in web_retrieves])
@@ -289,17 +269,11 @@ class CragGraph:
             return "failure"
 
     def __condition_retrieve_grade(self, state: RagState) -> str:
-        rag_retrieves_relevant = state["rag_retrieves_relevant"] or []
-        rag_retrieves_weak = state["rag_retrieves_weak"] or []
+        rag_retrieves = state["rag_retrieves"]
 
-        if len(rag_retrieves_relevant) > 0:
-            print(
-                f"[condition_retrieve_grade] Relevant number: {len(rag_retrieves_relevant)}"
-            )
+        if len(rag_retrieves) > 0:
+            print(f"[condition_retrieve_grade] Relevant number: {len(rag_retrieves)}")
             return "Relevant"
-        elif len(rag_retrieves_weak):
-            print(f"[condition_retrieve_grade] Weak number: {len(rag_retrieves_weak)}")
-            return "Weak"
         else:
             print(f"[condition_retrieve_grade] Irrelevant")
             return "Irrelevant"

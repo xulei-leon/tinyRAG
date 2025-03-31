@@ -27,6 +27,5 @@ split_chunk_overlap = 150
 content_size_min = 50
 search_result_num = 5
 score_threshold = 0.55
-rerank_score_relevant = 0.7
-rerank_score_weak = 0.5
+rerank_score_relevant = 0.2
 
