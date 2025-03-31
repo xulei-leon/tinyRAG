@@ -53,6 +53,7 @@ class LLMProcessor:
         user_instruction = (
             "Rewrite, optimise and extend the questions users ask, based on the personal information they provide.\n"
             "This helps us to understand their needs better and provide more detailed responses.\n"
+            "Please answer questions from users in Chinese.\n"
             "You can add more details to the question, but do not change the original meaning."
         )
 
@@ -77,7 +78,7 @@ class LLMProcessor:
             doc = rewriter.invoke({"question": question})
             rewrite_result = doc[json_key]
         except KeyError:
-            logging.error("KeyError: 'refined_question' not found in response")
+            logging.error(f"KeyError: {json_key} not found in response")
             rewrite_result = question
 
         return rewrite_result or question
@@ -134,7 +135,7 @@ class LLMProcessor:
         user_instruction = (
             "Answer the question based on the user's profile and the context provided.\n"
             "If the context does not provide enough information or is not relevant to the question, please answer based on your knowledge.\n"
-            "Please answer questions from users in Chinese. \n"
+            "Please answer questions from users in Chinese.\n"
             "Use the simple and clear language. The output string length should be between 50 and 200 characters."
         )
 
@@ -269,10 +270,6 @@ class LLMProcessor:
             "- Note: Do not include any other text or explanation.\n"
             f"- Key: {json_key}\n"
             "- Value: Must a text string.\n"
-            "## Output Format Example\n"
-            "{\n"
-            f'  "{json_key}": "This is a example string"\n'
-            "}\n"
         )
 
     @staticmethod
