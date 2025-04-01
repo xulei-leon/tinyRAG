@@ -123,25 +123,23 @@ class LLMProcessor:
     ################################################################################
     ### Generate answer
     ################################################################################
-    def generate_answer(self, question: str, context: str) -> str:
+    def generate_answer(self, question: str, rag_context: str, web_context: str) -> str:
         llm = self.llm
         json_key = "answer"
 
         system_role = (
-            "## Role: Generate Answer Specialist\n"
-            "As a healthcare professional, you need to be professional and empathetic. "
-            "You also need to adjust your tone and communication style based on the person you're talking to. "
-            "Your main goal is to provide solutions that are relevant to the user's personality, while also staying professional."
+            "## Role: Healthcare Consultant\n"
+            "Your main goal is to provide solutions that are relevant to the user's personality, while also staying professional.\n"
         )
         system_instruction = self.__output_instruction()
         system_response_format = self.__json_output_format(json_key=json_key)
         user_profile = self.__user_profile()
         user_instruction = (
-            "Answer the question based on the user's profile and the context provided.\n"
-            "1. Use the simple and clear language. \n"
-            "2. Use a formal but friendly tone. \n"
-            "3. Use the user's profile to adjust your tone and communication style.\n"
-            "4. If the context does not provide enough information or is not relevant to the question, please answer based on your knowledge.\n"
+            "Answer the question based on the user's profile and the database context and web context provided.\n"
+            "1. Please focus on the database context to answer the question, but also refer to the web context.\n"
+            "2. If the database context does not provide enough information or is not relevant to the question, please answer based on web context and your knowledge.\n"
+            "3. Use a formal but friendly tone, and the simple and clear language.\n"
+            "4. Use the user's profile to adjust your tone and communication style.\n"
             "5. The recommended length of the output string is between 50 and 200 characters.\n"
             "6. Please answer questions from users in Chinese.\n"
         )
@@ -154,7 +152,7 @@ class LLMProcessor:
                 ),
                 (
                     "human",
-                    f"{user_profile}\n\n{user_instruction}\n\nUser question:\n{{question}}\n\nnContext:\n\n {{context}}",
+                    f"{user_profile}\n\n{user_instruction}\n\n## User question:\n{{question}}\n\nn## Database Context:\n\n {{rag_context}}\n\n## Web Context:\n\n {{web_context}}",
                 ),
             ]
         )
@@ -164,18 +162,23 @@ class LLMProcessor:
         answer_result = None
         try:
             rewriter = prompt | llm | JsonOutputParser()
-            result = rewriter.invoke({"question": question, "context": context})
-            print(f"rewriter result: {result}")
+            result = rewriter.invoke(
+                {
+                    "question": question,
+                    "rag_context": rag_context,
+                    "web_context": web_context,
+                }
+            )
+
             if type(result[json_key]) is str:
                 answer_result = result[json_key]
-            else:
-                answer_result = context
+
         except KeyError:
             print(f"LLM answer KeyError: key {json_key} not found in result")
         except Exception as e:
             print(f"LLM answer except: {e}")
 
-        return answer_result or context
+        return answer_result or web_context
 
     ################################################################################
     ### Grade context relevance

@@ -65,6 +65,7 @@ class RagState(TypedDict):
     rag_retrieves: List[Document]
     web_retrieves: List[Document]
     # documents: Annotated[list, operator.add]
+    completed: Annotated[list, operator.add]
 
 
 #
@@ -115,35 +116,42 @@ class CragGraph:
         graph.add_node("rewrite_qestion", self.__node_rewrite_question)
         graph.add_node("rag_retrieve", self.__node_rag_retrieve)
         graph.add_node("rag_retrieve_grade", self.__node_rag_retrieve_grade)
+        graph.add_node("rag_retrieve_finish", self.__node_rag_retrieve_finish)
         graph.add_node("web_retrieve", self.__node_web_retrieve)
         graph.add_node("generate_answer", self.__node_generate_answer)
 
         # Add edges
         graph.add_edge(START, "rewrite_qestion")
-        graph.add_edge("rewrite_qestion", "rag_retrieve")
 
         # RAG retrieve
+        graph.add_edge("rewrite_qestion", "rag_retrieve")
         graph.add_conditional_edges(
             "rag_retrieve",
             self.__condition_retrieve,
             {
                 "success": "rag_retrieve_grade",
-                "failure": "web_retrieve",
+                "failure": "rag_retrieve_finish",
             },
         )
-
+        graph.add_edge("rag_retrieve_grade", "rag_retrieve_finish")
         graph.add_conditional_edges(
-            "rag_retrieve_grade",
-            self.__condition_retrieve_grade,
+            "rag_retrieve_finish",
+            self.__condition_complete,
             {
-                "Relevant": "generate_answer",
-                "Weak": "web_retrieve",
-                "Irrelevant": "web_retrieve",
+                "success": "generate_answer",
+                "failure": END,
             },
         )
-
         # web retrieve
-        graph.add_edge("web_retrieve", "generate_answer")
+        graph.add_edge("rewrite_qestion", "web_retrieve")
+        graph.add_conditional_edges(
+            "web_retrieve",
+            self.__condition_complete,
+            {
+                "success": "generate_answer",
+                "failure": END,
+            },
+        )
 
         # generate answer
         graph.add_edge("generate_answer", END)
@@ -163,9 +171,7 @@ class CragGraph:
             rewrite_question = question
 
         print(f"[rewrite_question] rewite question: {rewrite_question}")
-        updated_state = state.copy()
-        updated_state.update({"question": rewrite_question})
-        return updated_state
+        return {"question": rewrite_question}
 
     def __node_rag_retrieve(self, state: RagState) -> RagState:
         question = state["question"]
@@ -175,9 +181,7 @@ class CragGraph:
         rag_retrieves = self.rag_retriever.query(question)
         print(f"[rag_retrieve] rag retrieve number: {len(rag_retrieves)}")
 
-        updated_state = state.copy()
-        updated_state.update({"rag_retrieves": rag_retrieves})
-        return updated_state
+        return {"rag_retrieves": rag_retrieves}
 
     def __node_rag_retrieve_grade(self, state: RagState) -> RagState:
         question = state["question"]
@@ -210,16 +214,16 @@ class CragGraph:
                 doc[0] for doc in relevants_with_score[: self.search_result_num]
             ]
 
-        updated_state = state.copy()
-        updated_state.update(
-            {
-                "rag_retrieves": rag_retrieves,
-            }
-        )
-        return updated_state
+        return {"rag_retrieves": rag_retrieves}
+
+    def __node_rag_retrieve_finish(self, state: RagState) -> RagState:
+        new_completed = state["completed"].copy()
+        new_completed.append("rag")
+        return {"completed": new_completed}
 
     def __node_web_retrieve(self, state: RagState) -> RagState:
         question = state["question"]
+        new_completed = state["completed"].copy()
 
         # Web search
         web_retrieves = self.web_retriever.invoke(question)
@@ -227,53 +231,56 @@ class CragGraph:
             print("=== web retrieve === ")
             print(doc.page_content[:200])
 
-        updated_state = state.copy()
-        updated_state.update({"web_retrieves": web_retrieves})
-        return updated_state
+        new_completed.append("web")
+        return {"web_retrieves": web_retrieves, "completed": new_completed}
 
     def __node_generate_answer(self, state: RagState) -> RagState:
         question = state["question"]
         rag_retrieves = state.get("rag_retrieves", None)
         web_retrieves = state.get("web_retrieves", None)
+        web_retrieves = web_retrieves[:1]  # now only use one web content
 
-        context = ""
+        rag_context = ""
+        rag_num = 0
         if rag_retrieves:
-            context += "\n".join(doc.page_content for doc in rag_retrieves)
+            rag_num = len(rag_retrieves)
+            rag_context += "\n".join(doc.page_content for doc in rag_retrieves)
 
+        web_context = ""
+        web_num = 0
         if web_retrieves:
-            context += "\n".join([doc.page_content for doc in web_retrieves])
+            web_num = len(web_retrieves)
+            web_context += "\n".join([doc.page_content for doc in web_retrieves])
 
         # Generation
         generation = self.llm_processor.generate_answer(
-            question=question, context=context
+            question=question,
+            rag_context=rag_context,
+            web_context=web_context,
         )
-        if not generation:
-            generation = context
+
+        print(f"[generate_answer] question: {question}")
+        print(f"[generate_answer] {rag_num} rag_retrieves")
+        print(f"[generate_answer] {web_num} web_retrieves")
 
         print(f"[generate_answer] answer: {generation}")
 
-        updated_state = state.copy()
-        updated_state.update({"answer": generation})
-        return updated_state
+        return {"answer": generation}
 
     ############################################################################
     ## Edges conditional functions
     ############################################################################
     def __condition_retrieve(self, state: RagState) -> str:
-        rag_retrieves = state["rag_retrieves"]
-
-        if len(rag_retrieves) > 0:
+        if len(state["rag_retrieves"]) > 0:
             return "success"
         else:
             print("[condition_retrieve]: failure")
             return "failure"
 
-    def __condition_retrieve_grade(self, state: RagState) -> str:
-        rag_retrieves = state["rag_retrieves"]
-
-        if len(rag_retrieves) > 0:
-            print(f"[condition_retrieve_grade] Relevant number: {len(rag_retrieves)}")
-            return "Relevant"
+    def __condition_complete(self, state: RagState) -> str:
+        if {"rag", "web"}.issubset(state["completed"]):
+            print("[condition_complete]: success")
+            return "success"
         else:
-            print(f"[condition_retrieve_grade] Irrelevant")
-            return "Irrelevant"
+            print("[condition_complete]: failure")
+            return "failure"

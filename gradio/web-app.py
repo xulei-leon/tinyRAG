@@ -97,7 +97,7 @@ if __name__ == "__main__":
         collection_name=collection_name,
     )
     rag_retriever.load_index()
-    web_retriever = TavilySearchAPIRetriever(api_key=tavily_api_key, k=3)
+    web_retriever = TavilySearchAPIRetriever(api_key=tavily_api_key, k=1)
 
     # Create graph
     crag_graph = CragGraph(
