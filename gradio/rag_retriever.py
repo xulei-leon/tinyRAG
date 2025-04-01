@@ -193,8 +193,9 @@ class RagRetriever:
         print(f"Added {len(all_splits)} document splits to the vector store.")
 
     def __build_bm25(self, documents: List[Document]):
-        self.bm25_retriever = BM25Retriever.from_documents(documents)
-        print(f"Added {len(documents)} documents to {self.bm25_index_file}.")
+        all_splits = self.text_splitter.split_documents(documents)
+        self.bm25_retriever = BM25Retriever.from_documents(all_splits)
+        print(f"Added {len(all_splits)} documents to {self.bm25_index_file}.")
         with open(self.bm25_index_file, "wb") as f:
             pickle.dump(self.bm25_retriever, f)
 
