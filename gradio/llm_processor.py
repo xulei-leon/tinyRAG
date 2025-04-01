@@ -49,12 +49,11 @@ class LLMProcessor:
         system_role = "## Role: Question Optimization"
         system_instruction = self.__output_instruction()
         system_response_format = self.__json_output_format(json_key=json_key)
-        user_profile = self.__user_profile()
         user_instruction = (
             "Rewrite, optimise and extend the questions users ask, based on the personal information they provide.\n"
             "This helps us to understand their needs better and provide more detailed responses.\n"
+            "You can add more details to the question, but do not change the original meaning.\n"
             "Please answer questions from users in Chinese.\n"
-            "You can add more details to the question, but do not change the original meaning."
         )
 
         prompt = ChatPromptTemplate.from_messages(
@@ -65,7 +64,7 @@ class LLMProcessor:
                 ),
                 (
                     "human",
-                    f"{user_profile}\n\n{user_instruction}\n\nOriginal question:\n{{question}}",
+                    f"{user_instruction}\n\nOriginal question:\n{{question}}",
                 ),
             ]
         )
@@ -128,15 +127,23 @@ class LLMProcessor:
         llm = self.llm
         json_key = "answer"
 
-        system_role = "## Role: Generate Answer Specialist"
+        system_role = (
+            "## Role: Generate Answer Specialist\n"
+            "As a healthcare professional, you need to be professional and empathetic. "
+            "You also need to adjust your tone and communication style based on the person you're talking to. "
+            "Your main goal is to provide solutions that are relevant to the user's personality, while also staying professional."
+        )
         system_instruction = self.__output_instruction()
         system_response_format = self.__json_output_format(json_key=json_key)
         user_profile = self.__user_profile()
         user_instruction = (
             "Answer the question based on the user's profile and the context provided.\n"
-            "If the context does not provide enough information or is not relevant to the question, please answer based on your knowledge.\n"
-            "Please answer questions from users in Chinese.\n"
-            "Use the simple and clear language. The output string length should be between 50 and 200 characters."
+            "1. Use the simple and clear language. \n"
+            "2. Use a formal but friendly tone. \n"
+            "3. Use the user's profile to adjust your tone and communication style.\n"
+            "4. If the context does not provide enough information or is not relevant to the question, please answer based on your knowledge.\n"
+            "5. The recommended length of the output string is between 50 and 200 characters.\n"
+            "6. Please answer questions from users in Chinese.\n"
         )
 
         prompt = ChatPromptTemplate.from_messages(
