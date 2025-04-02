@@ -64,7 +64,6 @@ class RagState(TypedDict):
     answer: str
     rag_retrieves: List[Document]
     web_retrieves: List[Document]
-    # documents: Annotated[list, operator.add]
     completed: Annotated[list, operator.add]
 
 
@@ -217,13 +216,10 @@ class CragGraph:
         return {"rag_retrieves": rag_retrieves}
 
     def __node_rag_retrieve_finish(self, state: RagState) -> RagState:
-        new_completed = state["completed"].copy()
-        new_completed.append("rag")
-        return {"completed": new_completed}
+        return {"completed": ["rag"]}
 
     def __node_web_retrieve(self, state: RagState) -> RagState:
         question = state["question"]
-        new_completed = state["completed"].copy()
 
         # Web search
         web_retrieves = self.web_retriever.invoke(question)
@@ -231,8 +227,7 @@ class CragGraph:
             print("=== web retrieve === ")
             print(doc.page_content[:200])
 
-        new_completed.append("web")
-        return {"web_retrieves": web_retrieves, "completed": new_completed}
+        return {"web_retrieves": web_retrieves, "completed": ["web"]}
 
     def __node_generate_answer(self, state: RagState) -> RagState:
         question = state["question"]
