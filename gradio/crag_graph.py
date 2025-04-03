@@ -65,6 +65,7 @@ class RagState(TypedDict):
     rag_retrieves: List[Document]
     web_retrieves: List[Document]
     completed: Annotated[list, operator.add]
+    thinking: Annotated[str, operator.add]
 
 
 #
@@ -112,6 +113,7 @@ class CragGraph:
         graph = StateGraph(RagState)
 
         # Add nodes
+        graph.add_node("start", self.__node_start)
         graph.add_node("rewrite_qestion", self.__node_rewrite_question)
         graph.add_node("rag_retrieve", self.__node_rag_retrieve)
         graph.add_node("rag_retrieve_grade", self.__node_rag_retrieve_grade)
@@ -120,7 +122,8 @@ class CragGraph:
         graph.add_node("generate_answer", self.__node_generate_answer)
 
         # Add edges
-        graph.add_edge(START, "rewrite_qestion")
+        graph.add_edge(START, "start")
+        graph.add_edge("start", "rewrite_qestion")
 
         # RAG retrieve
         graph.add_edge("rewrite_qestion", "rag_retrieve")
@@ -160,6 +163,13 @@ class CragGraph:
     ############################################################################
     ## Nodes functions
     ############################################################################
+    def __node_start(self, state: RagState) -> RagState:
+        thinking = "\n💡 你好，我是健康保健专家，我现在根据你的问题进行专业的分析和回答。请稍后...\n"
+        new_state = {
+            "thinking": thinking,
+        }
+        return new_state
+
     def __node_rewrite_question(self, state: RagState) -> RagState:
         question = state["question"]
         print(f"[rewrite_question] question: {question}")
@@ -170,7 +180,18 @@ class CragGraph:
             rewrite_question = question
 
         print(f"[rewrite_question] rewite question: {rewrite_question}")
-        return {"question": rewrite_question}
+
+        thinking = (
+            "\n📝 正在分析问题...\n"
+            "优化问题是为了更好地理解和回答你的问题。\n"
+            f"原问题: {question}\n"
+            f"优化问题: {rewrite_question}\n"
+        )
+        new_state = {
+            "thinking": thinking,
+            "question": rewrite_question,
+        }
+        return new_state
 
     def __node_rag_retrieve(self, state: RagState) -> RagState:
         question = state["question"]
@@ -180,7 +201,14 @@ class CragGraph:
         rag_retrieves = self.rag_retriever.query(question)
         print(f"[rag_retrieve] rag retrieve number: {len(rag_retrieves)}")
 
-        return {"rag_retrieves": rag_retrieves}
+        thinking = (
+            "\n🔍 正在检索专业资料和产品...\n" f"已经检索到{len(rag_retrieves)}份资料\n"
+        )
+        new_state = {
+            "thinking": thinking,
+            "rag_retrieves": rag_retrieves,
+        }
+        return new_state
 
     def __node_rag_retrieve_grade(self, state: RagState) -> RagState:
         question = state["question"]
@@ -213,7 +241,14 @@ class CragGraph:
                 doc[0] for doc in relevants_with_score[: self.search_result_num]
             ]
 
-        return {"rag_retrieves": rag_retrieves}
+        thinking = (
+            "\n📚 正在分析检索资料...\n" f"查找到{len(rag_retrieves)}份相关资料\n"
+        )
+        new_state = {
+            "thinking": thinking,
+            "rag_retrieves": rag_retrieves,
+        }
+        return new_state
 
     def __node_rag_retrieve_finish(self, state: RagState) -> RagState:
         return {"completed": ["rag"]}
@@ -227,7 +262,13 @@ class CragGraph:
             print("=== web retrieve === ")
             print(doc.page_content[:200])
 
-        return {"web_retrieves": web_retrieves, "completed": ["web"]}
+        thinking = "\n🌐 正在查找最新数据...\n"
+        new_state = {
+            "thinking": thinking,
+            "web_retrieves": web_retrieves,
+            "completed": ["web"],
+        }
+        return new_state
 
     def __node_generate_answer(self, state: RagState) -> RagState:
         question = state["question"]
@@ -260,20 +301,25 @@ class CragGraph:
 
         print(f"[generate_answer] answer: {generation}")
 
-        return {"answer": generation}
+        thinking = "\n✅ 下面是保健专家的回答：\n"
+        new_state = {
+            "thinking": thinking,
+            "answer": generation,
+        }
+        return new_state
 
     ############################################################################
     ## Edges conditional functions
     ############################################################################
     def __condition_retrieve(self, state: RagState) -> str:
-        if len(state["rag_retrieves"]) > 0:
+        if state.get("rag_retrieves"):
             return "success"
         else:
             print("[condition_retrieve]: failure")
             return "failure"
 
     def __condition_complete(self, state: RagState) -> str:
-        if {"rag", "web"}.issubset(state["completed"]):
+        if {"rag", "web"}.issubset(state.get("completed") or []):
             print("[condition_complete]: success")
             return "success"
         else:

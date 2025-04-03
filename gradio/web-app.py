@@ -18,16 +18,16 @@ from llm_processor import LLMProcessor
 def stream_response(inputs):
     for output in rag_app.stream(inputs):
         for node_name, node_state in output.items():
-            if node_state.get("question"):
-                yield node_state["question"]
-            elif node_state.get("answer"):
+            if node_state.get("thinking"):
+                yield node_state["thinking"]
+
+            if node_state.get("answer"):
                 yield node_state["answer"]
 
 
 # Define a function to run the conversation
 def run_conversation(user_input, chat_history):
     chat_history.append((user_input, ""))
-    yield "", chat_history
 
     inputs = {"question": user_input}
     full_response = []
@@ -36,7 +36,7 @@ def run_conversation(user_input, chat_history):
         chat_history[-1] = (user_input, "\n\n".join(full_response))
         yield "", chat_history
 
-    chat_history[-1] = (user_input, chat_history[-1][1] + "\n\n✅ 处理完成")
+    chat_history[-1] = (user_input, chat_history[-1][1])
     yield "", chat_history
 
 
