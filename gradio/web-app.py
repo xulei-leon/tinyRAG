@@ -15,16 +15,29 @@ from rag_retriever import RagRetriever
 from llm_processor import LLMProcessor
 
 
+def stream_response(inputs):
+    for output in rag_app.stream(inputs):
+        for node_name, node_state in output.items():
+            if node_state.get("question"):
+                yield node_state["question"]
+            elif node_state.get("answer"):
+                yield node_state["answer"]
+
+
 # Define a function to run the conversation
 def run_conversation(user_input, chat_history):
+    chat_history.append((user_input, ""))
+    yield "", chat_history
+
     inputs = {"question": user_input}
-    response = rag_app.invoke(inputs)
+    full_response = []
+    for chunk in stream_response(inputs):
+        full_response.append(chunk)
+        chat_history[-1] = (user_input, "\n\n".join(full_response))
+        yield "", chat_history
 
-    ai_response = response["answer"]
-
-    chat_history.append((user_input, ai_response))
-
-    return "", chat_history
+    chat_history[-1] = (user_input, chat_history[-1][1] + "\n\n✅ 处理完成")
+    yield "", chat_history
 
 
 # Create a Gradio interface
@@ -87,6 +100,7 @@ if __name__ == "__main__":
         frequency_penalty=0.7,
         presence_penalty=0.5,
         max_retries=3,
+        streaming=True,
     )
 
     llm_processor = LLMProcessor(llm=llm)
