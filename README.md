@@ -1,7 +1,7 @@
 # AI Agent Learning
 Some sample code to help you learn about LangChain and LangGraph for building AI agents.
 
-### Download nltk data
+## Download nltk data
 Windows VScode TERMINAL
 ```bash
 > mkdir nltk_data
@@ -10,24 +10,41 @@ Windows VScode TERMINAL
 > python -c "import nltk; nltk.download(['punkt', 'punkt_tab', 'averaged_perceptron_tagger', 'averaged_perceptron_tagger_eng', 'stopwords'], download_dir='nltk_data')"
 ```
 
-### Build docker image
+## Build docker image
 ```bash
-$ docker compose build
+> cp key.env .env
+<Add your token and key>
+
+> docker compose build
 ```
 
-### Run Shell to prepare retrieve index database
+## Run Shell to prepare retrieve index database
 ```bash
-docker run  -v .:/app/ -w /app/ --name shell -it tinyrag:latest bash
+> docker run  -v .:/app/ -w /app/ --name shell -it tinyrag:latest bash
 ```
 
-### Run docker compose image
-
+### Execute the command in your docker image shell
+Install libraries for loading documnets
 ```bash
-$ docker compose up -d
+apt-get install -y libreoffice
+pip install "unstructured[pdf, doc, docx, ppt, pptx]"
+pip install "langchain-unstructured[all-docs]"
+```
 
-$ docker compose ps
-NAME                IMAGE             COMMAND                   SERVICE    CREATED         STATUS          PORTS
-gradio-crag-app-1   gradio-app:latest   "python web-app.py -…"   crag-app   50 seconds ago   Up 47 seconds   0.0.0.0:7860->7860/tcp
+Create bm25 index from your documents files
+```bash
+$ python src/rag_retriever.py --bm25 /app/downloads/files
+```
+
+Create vector index from your documents files
+```bash
+$ python src/rag_retriever.py --vector /app/downloads/files
+```
+
+
+## Run docker compose image
+```bash
+> docker compose up -d
 ```
 
 ### Run gradio CRAG app

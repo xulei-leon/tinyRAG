@@ -55,11 +55,10 @@ with gr.Blocks() as agent:
 if __name__ == "__main__":
     load_dotenv()
     deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
-    silicon_api_key = os.getenv("SILICON_API_KEY")
     tavily_api_key = os.getenv("TAVILY_API_KEY")
     linkup_api_key = os.getenv("LINKUP_API_KEY")
 
-    with open("config.toml", "rb") as f:
+    with open("config/config.toml", "rb") as f:
         config_data = tomllib.load(f)
         embed_model = config_data.get("huggingface", {}).get("embed_model")
         reranker_model = config_data.get("huggingface", {}).get("reranker_model")

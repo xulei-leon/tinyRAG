@@ -79,8 +79,10 @@ class CragGraph:
         web_retriever: TavilySearchAPIRetriever,
         llm_processor: LLMProcessor,
     ):
+        # for langsmith token
         load_dotenv()
-        with open("config.toml", "rb") as f:
+
+        with open("config/config.toml", "rb") as f:
             config_data = tomllib.load(f)
             self.search_result_num = config_data.get("retriever", {}).get(
                 "search_result_num", 3

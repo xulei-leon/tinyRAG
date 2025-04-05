@@ -6,7 +6,6 @@ import sys
 import argparse
 import tomllib
 from typing import List
-from dotenv import load_dotenv
 from tqdm import tqdm
 
 # index
@@ -42,7 +41,7 @@ class RagRetriever:
     ):
         os.environ["TRANSFORMERS_OFFLINE"] = "1"  # to avoid downloading models
         os.environ["HF_DATASETS_OFFLINE"] = "1"  # to avoid downloading datasets
-        with open("config.toml", "rb") as f:
+        with open("config/config.toml", "rb") as f:
             config_data = tomllib.load(f)
             self.split_chunk_size = config_data.get("retriever", {}).get(
                 "split_chunk_size", 1000
@@ -353,7 +352,7 @@ def main():
         sys.exit(2)
 
     print("=== Init config ===")
-    with open("config.toml", "rb") as f:
+    with open("config/config.toml", "rb") as f:
         config_data = tomllib.load(f)
         embed_model = config_data.get("huggingface", {}).get("embed_model")
         reranker_model = config_data.get("huggingface", {}).get("reranker_model")
