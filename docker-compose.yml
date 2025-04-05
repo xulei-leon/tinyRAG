@@ -1,6 +1,6 @@
 services:
-  crag-app:
-    image: gradio-app:latest
+  tinyRAG:
+    image: tinyrag:latest
     build:
       context: .
       dockerfile: Dockerfile

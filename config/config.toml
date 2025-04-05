@@ -4,7 +4,7 @@ log_level = "INFO"
 
 [deepseek]
 model = "deepseek-chat"
-temperature = 0.5
+temperature = 0.9
 max_tokens = 4096
 
 [silicon]
@@ -12,4 +12,20 @@ base_url = "https://api.siliconflow.cn/v1"
 model = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
 
 [huggingface]
-embed_model = "sentence-transformers/all-MiniLM-L6-v2"
+#embed_model = "sentence-transformers/all-MiniLM-L6-v2"
+embed_model = "/models/BAAI/bge-small-zh-v1.5"
+reranker_model = "/models/BAAI/bge-reranker-base"
+
+[vector]
+files_directory = "/app/var/files"
+persist_directory = "/app/var/data_store"
+collection_name = "crag"
+
+[retriever]
+split_chunk_size = 1000
+split_chunk_overlap = 150
+content_size_min = 50
+search_result_num = 3
+score_threshold = 0.55
+rerank_score_relevant = 0.2
+

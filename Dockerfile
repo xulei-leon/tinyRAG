@@ -1,3 +1,15 @@
+FROM python:3.12.9-slim-bookworm AS builder
+
+# Predownload the model to the /models directory
+WORKDIR /models
+RUN pip install huggingface-hub
+RUN python -c "from huggingface_hub import snapshot_download; \
+    snapshot_download(repo_id='BAAI/bge-small-zh-v1.5', \
+    local_dir='BAAI/bge-small-zh-v1.5')"
+RUN python -c "from huggingface_hub import snapshot_download; \
+    snapshot_download(repo_id='BAAI/bge-reranker-base', \
+    local_dir='BAAI/bge-reranker-base')"
+
 # Use an official Python runtime as a parent image
 FROM python:3.12.9-slim-bookworm
 
@@ -9,24 +21,57 @@ ENV PYTHONUNBUFFERED=1
 
 # Set the working directory in the container
 WORKDIR /app
-COPY . /app
 
-# Install pip requirements
+# Install system dependencies
+COPY config/debian.sources /etc/apt/sources.list.d/debian.sources
+RUN apt-get update
+RUN apt-get install -y libmagic1
+
+# Install python libraries
+COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install other libraries
+# Install Hugging Face model
+RUN pip install --no-cache-dir torch==2.6.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu & \
+    pip install --no-cache-dir sentence-transformers --no-deps & \
+    pip install --no-cache-dir transformers tqdm scikit-learn numpy & \
+    pip install --no-cache-dir langchain-huggingface --no-deps & \
+    pip install torchvision --extra-index-url https://download.pytorch.org/whl/cpu
+
+RUN pip install --no-cache-dir pickle-RUN pip install --no-cache-dir mixin & \
+    pip install --no-cache-dir "unstructured[text, csv, markdown, json]" & \
+    pip install --no-cache-dir "langchain-unstructured[all-docs]"
 
 
-# Creates a non-root user with an explicit UID and adds permission to access the /app folder
-# For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
-#RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /app
-#USER appuser
+# Copy nltk data
+ENV NLTK_DATA=/nltk_data
+COPY nltk_data ${NLTK_DATA}
 
-# Make port 80 available to the world outside this container
-#EXPOSE 80
+# Download nltk data
+###############################################################################
+# RUN pip install nltk
+# ARG NLTK_DATASETS="punkt punkt_tab averaged_perceptron_tagger averaged_perceptron_tagger_eng stopwords"
+# RUN mkdir -p ${NLTK_DATA}
+# RUN for dataset in ${NLTK_DATASETS}; do \
+#     python -c "import nltk; nltk.download('${dataset}', download_dir='${NLTK_DATA}')"; \
+# done
+###############################################################################
 
 # Define environment variable
-#ENV NAME World
+ENV TRANSFORMERS_OFFLINE=1
+ENV HF_DATASETS_OFFLINE=1
 
-# Run app.py when the container launches
-#CMD ["python", "-m", "app.py"]
+# Copy the models from the previous image
+COPY --from=builder /models /models
+
+# Copy the current directory contents into the container at /app
+#COPY . /app
+
+# Make port available to the world outside this container
+EXPOSE 7860
+
+# Run bash for debug
+# CMD ["bash"]
+
+# Run app when the container launches
+CMD ["python", "src/app.py", "--listen", "--server-port", "7860", "--server-name", "0.0.0.0"]

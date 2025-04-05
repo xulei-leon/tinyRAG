@@ -1,34 +1,23 @@
 # AI Agent Learning
 Some sample code to help you learn about LangChain and LangGraph for building AI agents.
 
-## Jupyter Notebook
-### Build docker
-
+### Download nltk data
+Windows VScode TERMINAL
 ```bash
-$ cd notebook
-$ docker build -t langchain:latest .
+> mkdir nltk_data
+
+> pip install nltk
+> python -c "import nltk; nltk.download(['punkt', 'punkt_tab', 'averaged_perceptron_tagger', 'averaged_perceptron_tagger_eng', 'stopwords'], download_dir='nltk_data')"
 ```
 
-### Run docker
-
+### Build docker image
 ```bash
-docker run -d -p 8888:8888 -v .:/app/notebook -w /app/notebook --name langchain-notebook langchain:0.3
-```
-
-### Run Jupyter Notebook with your web brower.
-
-Open web brower and input: http://127.0.0.1:8888/lab/tree/notebook
-
-## Gradio web app
-### Build docker compose image
-
-```bash
-$ cd gradio
 $ docker compose build
+```
 
-$ docker image ls
-REPOSITORY         TAG                    IMAGE ID       CREATED              SIZE
-gradio-app         latest                 a42822ef3991   5 minutes ago   6.87GB
+### Run Shell to prepare retrieve index database
+```bash
+docker run  -v .:/app/ -w /app/ --name shell -it tinyrag:latest bash
 ```
 
 ### Run docker compose image
@@ -39,16 +28,8 @@ $ docker compose up -d
 $ docker compose ps
 NAME                IMAGE             COMMAND                   SERVICE    CREATED         STATUS          PORTS
 gradio-crag-app-1   gradio-app:latest   "python web-app.py -…"   crag-app   50 seconds ago   Up 47 seconds   0.0.0.0:7860->7860/tcp
-
-$ docker compose restart crag-app
 ```
 
-### Rradio CRAG app
+### Run gradio CRAG app
 
-Open web brower and input: http://127.0.0.1/7860
-
-### Debug login as bash
-
-```bash
-$ docker exec -it gradio-crag-app-1 bash
-```
+Open web brower and input: http://127.0.0.1/7
