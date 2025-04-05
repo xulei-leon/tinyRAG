@@ -42,7 +42,7 @@ def run_conversation(user_input, chat_history):
 
 # Create a Gradio interface
 with gr.Blocks() as agent:
-    gr.Markdown("# LangGraph CRAG agent")
+    gr.Markdown("# CalerieLife健康专家")
     chatbot = gr.Chatbot(type="tuples")
 
     msg = gr.Textbox()
