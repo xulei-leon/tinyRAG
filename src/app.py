@@ -19,7 +19,7 @@ def stream_response(inputs):
     for output in rag_app.stream(inputs):
         for node_name, node_state in output.items():
             if node_state.get("thinking"):
-                yield node_state["thinking"]
+                yield ">" + node_state["thinking"]
 
             if node_state.get("answer"):
                 yield node_state["answer"]

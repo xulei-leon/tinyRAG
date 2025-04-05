@@ -116,48 +116,63 @@ class CragGraph:
 
         # Add nodes
         graph.add_node("start", self.__node_start)
+        graph.add_node("rewrite_qestion_start", self.__node_rewrite_question_start)
         graph.add_node("rewrite_qestion", self.__node_rewrite_question)
+
+        graph.add_node("rag_retrieve_start", self.__node_rag_retrieve_start)
         graph.add_node("rag_retrieve", self.__node_rag_retrieve)
+        graph.add_node("rag_retrieve_grade_start", self.__node_rag_retrieve_grade_start)
         graph.add_node("rag_retrieve_grade", self.__node_rag_retrieve_grade)
         graph.add_node("rag_retrieve_finish", self.__node_rag_retrieve_finish)
+
+        graph.add_node("web_retrieve_start", self.__node_web_retrieve_start)
         graph.add_node("web_retrieve", self.__node_web_retrieve)
+
+        graph.add_node("generate_answer_start", self.__node_generate_answer_start)
         graph.add_node("generate_answer", self.__node_generate_answer)
 
         # Add edges
         graph.add_edge(START, "start")
-        graph.add_edge("start", "rewrite_qestion")
+        graph.add_edge("start", "rewrite_qestion_start")
+        graph.add_edge("rewrite_qestion_start", "rewrite_qestion")
 
         # RAG retrieve
-        graph.add_edge("rewrite_qestion", "rag_retrieve")
+        graph.add_edge("rewrite_qestion", "rag_retrieve_start")
+        graph.add_edge("rag_retrieve_start", "rag_retrieve")
         graph.add_conditional_edges(
             "rag_retrieve",
             self.__condition_retrieve,
             {
-                "success": "rag_retrieve_grade",
+                "success": "rag_retrieve_grade_start",
                 "failure": "rag_retrieve_finish",
             },
         )
+
+        graph.add_edge("rag_retrieve_grade_start", "rag_retrieve_grade")
         graph.add_edge("rag_retrieve_grade", "rag_retrieve_finish")
         graph.add_conditional_edges(
             "rag_retrieve_finish",
             self.__condition_complete,
             {
-                "success": "generate_answer",
+                "success": "generate_answer_start",
                 "failure": END,
             },
         )
+
         # web retrieve
-        graph.add_edge("rewrite_qestion", "web_retrieve")
+        graph.add_edge("rewrite_qestion", "web_retrieve_start")
+        graph.add_edge("web_retrieve_start", "web_retrieve")
         graph.add_conditional_edges(
             "web_retrieve",
             self.__condition_complete,
             {
-                "success": "generate_answer",
+                "success": "generate_answer_start",
                 "failure": END,
             },
         )
 
         # generate answer
+        graph.add_edge("generate_answer_start", "generate_answer")
         graph.add_edge("generate_answer", END)
 
         return graph
@@ -166,10 +181,21 @@ class CragGraph:
     ## Nodes functions
     ############################################################################
     def __node_start(self, state: RagState) -> RagState:
-        thinking = "\n💡 你好，我是健康保健专家，我现在根据你的问题进行专业的分析和回答。请稍后...\n"
-        new_state = {
-            "thinking": thinking,
-        }
+        thinking = "💡 你好，我是健康保健专家，我现在根据你的问题进行专业的分析和回答。请稍后..."
+        new_state = {"thinking": thinking}
+        return new_state
+
+    def __node_rewrite_question_start(self, state: RagState) -> RagState:
+        question = state["question"]
+
+        thinking = (
+            "📝 正在分析问题...\n"
+            "优化问题是为了更好地理解和回答你的问题。\n"
+            f"原问题: {question}\n"
+            "请稍后..."
+        )
+
+        new_state = {"thinking": thinking}
         return new_state
 
     def __node_rewrite_question(self, state: RagState) -> RagState:
@@ -183,16 +209,13 @@ class CragGraph:
 
         print(f"[rewrite_question] rewite question: {rewrite_question}")
 
-        thinking = (
-            "\n📝 正在分析问题...\n"
-            "优化问题是为了更好地理解和回答你的问题。\n"
-            f"原问题: {question}\n"
-            f"优化问题: {rewrite_question}\n"
-        )
-        new_state = {
-            "thinking": thinking,
-            "question": rewrite_question,
-        }
+        thinking = f"📝 优化后问题: {rewrite_question}"
+        new_state = {"thinking": thinking, "question": rewrite_question}
+        return new_state
+
+    def __node_rag_retrieve_start(self, state: RagState) -> RagState:
+        thinking = "🔍 正在检索专业资料和产品。请稍后..."
+        new_state = {"thinking": thinking}
         return new_state
 
     def __node_rag_retrieve(self, state: RagState) -> RagState:
@@ -203,13 +226,16 @@ class CragGraph:
         rag_retrieves = self.rag_retriever.query(question)
         print(f"[rag_retrieve] rag retrieve number: {len(rag_retrieves)}")
 
-        thinking = (
-            "\n🔍 正在检索专业资料和产品...\n" f"已经检索到{len(rag_retrieves)}份资料\n"
-        )
+        thinking = f"🔍 已经检索到{len(rag_retrieves)}份产品资料。"
         new_state = {
             "thinking": thinking,
             "rag_retrieves": rag_retrieves,
         }
+        return new_state
+
+    def __node_rag_retrieve_grade_start(self, state: RagState) -> RagState:
+        thinking = "📚 正在分析检索资料。请稍后..."
+        new_state = {"thinking": thinking}
         return new_state
 
     def __node_rag_retrieve_grade(self, state: RagState) -> RagState:
@@ -243,9 +269,7 @@ class CragGraph:
                 doc[0] for doc in relevants_with_score[: self.search_result_num]
             ]
 
-        thinking = (
-            "\n📚 正在分析检索资料...\n" f"查找到{len(rag_retrieves)}份相关资料\n"
-        )
+        thinking = f"📚 已经分析有{len(rag_retrieves)}份资料与您的问题相关。"
         new_state = {
             "thinking": thinking,
             "rag_retrieves": rag_retrieves,
@@ -254,6 +278,11 @@ class CragGraph:
 
     def __node_rag_retrieve_finish(self, state: RagState) -> RagState:
         return {"completed": ["rag"]}
+
+    def __node_web_retrieve_start(self, state: RagState) -> RagState:
+        thinking = "🌐 正在检索最新数据，请稍后..."
+        new_state = {"thinking": thinking}
+        return new_state
 
     def __node_web_retrieve(self, state: RagState) -> RagState:
         question = state["question"]
@@ -264,12 +293,17 @@ class CragGraph:
             print("=== web retrieve === ")
             print(doc.page_content[:200])
 
-        thinking = "\n🌐 正在查找最新数据...\n"
+        thinking = f"🌐 已经检索到{len(web_retrieves)}份最新数据。"
         new_state = {
             "thinking": thinking,
             "web_retrieves": web_retrieves,
             "completed": ["web"],
         }
+        return new_state
+
+    def __node_generate_answer_start(self, state: RagState) -> RagState:
+        thinking = "💡 正在生成答案。请稍后..."
+        new_state = {"thinking": thinking}
         return new_state
 
     def __node_generate_answer(self, state: RagState) -> RagState:
@@ -303,7 +337,7 @@ class CragGraph:
 
         print(f"[generate_answer] answer: {generation}")
 
-        thinking = "\n✅ 下面是保健专家的回答：\n"
+        thinking = "👨‍⚕️ 下面是保健专家的回答："
         new_state = {
             "thinking": thinking,
             "answer": generation,
