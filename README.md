@@ -1,13 +1,21 @@
 # AI Agent Learning
 Some sample code to help you learn about LangChain and LangGraph for building AI agents.
 
-## Download nltk data
+## Download
+### Download nltk data
 Windows VScode TERMINAL
 ```bash
 > mkdir nltk_data
-
 > pip install nltk
 > python -c "import nltk; nltk.download(['punkt', 'punkt_tab', 'averaged_perceptron_tagger', 'averaged_perceptron_tagger_eng', 'stopwords'], download_dir='nltk_data')"
+```
+
+### Download models from huggingface hub
+```bash
+> mkdir ./models
+> pip install huggingface-hub
+> python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='BAAI/bge-small-zh-v1.5', local_dir='./models/BAAI/bge-small-zh-v1.5')"
+> python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='BAAI/bge-reranker-base', local_dir='./models/BAAI/bge-reranker-base')"
 ```
 
 ## Build docker image

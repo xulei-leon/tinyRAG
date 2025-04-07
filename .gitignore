@@ -176,3 +176,6 @@ cython_debug/
 # gradio
 .gradio/
 nltk_data/
+
+# models
+models/

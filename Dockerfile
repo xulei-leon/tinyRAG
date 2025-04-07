@@ -1,14 +1,14 @@
-FROM python:3.12.9-slim-bookworm AS builder
+# FROM python:3.12.9-slim-bookworm AS builder
 
 # Predownload the model to the /models directory
-WORKDIR /models
-RUN pip install huggingface-hub
-RUN python -c "from huggingface_hub import snapshot_download; \
-    snapshot_download(repo_id='BAAI/bge-small-zh-v1.5', \
-    local_dir='BAAI/bge-small-zh-v1.5')"
-RUN python -c "from huggingface_hub import snapshot_download; \
-    snapshot_download(repo_id='BAAI/bge-reranker-base', \
-    local_dir='BAAI/bge-reranker-base')"
+# WORKDIR /models
+# RUN pip install huggingface-hub
+# RUN python -c "from huggingface_hub import snapshot_download; \
+#     snapshot_download(repo_id='BAAI/bge-small-zh-v1.5', \
+#     local_dir='BAAI/bge-small-zh-v1.5')"
+# RUN python -c "from huggingface_hub import snapshot_download; \
+#     snapshot_download(repo_id='BAAI/bge-reranker-base', \
+#     local_dir='BAAI/bge-reranker-base')"
 
 # Use an official Python runtime as a parent image
 FROM python:3.12.9-slim-bookworm
@@ -62,7 +62,8 @@ ENV TRANSFORMERS_OFFLINE=1
 ENV HF_DATASETS_OFFLINE=1
 
 # Copy the models from the previous image
-COPY --from=builder /models /models
+# COPY --from=builder /models /models
+COPY models /models
 
 # Copy the current directory contents into the container at /app
 #COPY . /app
