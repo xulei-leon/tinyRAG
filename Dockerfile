@@ -29,18 +29,18 @@ RUN apt-get install -y libmagic1
 
 # Install python libraries
 COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 # Install Hugging Face model
-RUN pip install --no-cache-dir torch==2.6.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu & \
-    pip install --no-cache-dir sentence-transformers --no-deps & \
-    pip install --no-cache-dir transformers tqdm scikit-learn numpy & \
-    pip install --no-cache-dir langchain-huggingface --no-deps & \
-    pip install torchvision --extra-index-url https://download.pytorch.org/whl/cpu
+RUN pip install torch==2.6.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+RUN pip install sentence-transformers --no-deps
+RUN pip install transformers tqdm scikit-learn numpy
+RUN pip install langchain-huggingface --no-deps
+RUN pip install accelerate
 
-RUN pip install --no-cache-dir pickle-RUN pip install --no-cache-dir mixin & \
-    pip install --no-cache-dir "unstructured[text, csv, markdown, json]" & \
-    pip install --no-cache-dir "langchain-unstructured[all-docs]"
+RUN pip install pickle-mixin
+RUN pip install "unstructured[text, csv, markdown, json]"
+RUN pip install "langchain-unstructured[all-docs]"
 
 
 # Copy nltk data
@@ -68,10 +68,10 @@ COPY --from=builder /models /models
 #COPY . /app
 
 # Make port available to the world outside this container
-EXPOSE 7860
+EXPOSE 8080
 
 # Run bash for debug
 # CMD ["bash"]
 
 # Run app when the container launches
-CMD ["python", "src/app.py", "--listen", "--server-port", "7860", "--server-name", "0.0.0.0"]
+CMD ["python", "src/app.py"]

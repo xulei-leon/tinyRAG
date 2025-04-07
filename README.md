@@ -24,11 +24,11 @@ Windows VScode TERMINAL
 ```
 
 ### Execute the command in your docker image shell
-Install libraries for loading documnets
+Install libraries for loading pdf, doc, docx, ppt, pptx documents
 ```bash
 apt-get install -y libreoffice
+pip install torchvision --extra-index-url https://download.pytorch.org/whl/cpu
 pip install "unstructured[pdf, doc, docx, ppt, pptx]"
-pip install "langchain-unstructured[all-docs]"
 ```
 
 Create bm25 index from your documents files
@@ -49,4 +49,4 @@ $ python src/rag_retriever.py --vector /app/downloads/files
 
 ### Run gradio CRAG app
 
-Open web brower and input: http://127.0.0.1/7
+Open web brower and input: http://127.0.0.1/8080
