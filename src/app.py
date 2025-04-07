@@ -10,7 +10,7 @@ from langchain_deepseek import ChatDeepSeek
 from langchain_community.retrievers import TavilySearchAPIRetriever
 
 # my modules
-from crag_graph import CragGraph
+from rag_graph import RagGraph
 from rag_retriever import RagRetriever
 from llm_processor import LLMProcessor
 
@@ -111,12 +111,12 @@ rag_retriever.load_index()
 web_retriever = TavilySearchAPIRetriever(api_key=tavily_api_key, k=1)
 
 # Create graph
-crag_graph = CragGraph(
+rag_graph = RagGraph(
     llm_processor=llm_processor,
     rag_retriever=rag_retriever,
     web_retriever=web_retriever,
 )
-rag_app = crag_graph.compile()
+rag_app = rag_graph.compile()
 
 # Set the port for the Gradio app
 # Google Cloud Run uses the PORT environment variable

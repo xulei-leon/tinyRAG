@@ -71,7 +71,7 @@ class RagState(TypedDict):
 #
 # RAG Graph
 #
-class CragGraph:
+class RagGraph:
 
     def __init__(
         self,
