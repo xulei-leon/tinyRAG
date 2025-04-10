@@ -8,6 +8,7 @@ import tomllib
 # langchain
 from langchain_deepseek import ChatDeepSeek
 from langchain_community.retrievers import TavilySearchAPIRetriever
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 
 # my modules
 from rag_graph import RagGraph
@@ -15,8 +16,8 @@ from rag_retriever import RagRetriever
 from llm_processor import LLMProcessor
 
 
-def stream_response(inputs):
-    for output in rag_app.stream(inputs):
+def stream_response(inputs, config):
+    for output in rag_app.stream(inputs, config):
         for node_name, node_state in output.items():
             if node_state.get("thinking"):
                 yield ">" + node_state["thinking"]
@@ -27,11 +28,15 @@ def stream_response(inputs):
 
 # Define a function to run the conversation
 def run_conversation(user_input, chat_history):
+    thread_id = "gradio_test"
     chat_history.append((user_input, ""))
-
-    inputs = {"question": user_input}
     full_response = []
-    for chunk in stream_response(inputs):
+
+    config = {"configurable": {"thread_id": thread_id}}
+    input_message = [HumanMessage(content=user_input)]
+    input_message[0].pretty_print()
+
+    for chunk in stream_response({"messages": input_message}, config):
         full_response.append(chunk)
         chat_history[-1] = (user_input, "\n\n".join(full_response))
         yield "", chat_history

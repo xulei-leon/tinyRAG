@@ -59,7 +59,7 @@ from llm_processor import LLMProcessor
 #
 # RAG state
 #
-class RagState(TypedDict):
+class RagState(MessagesState):
     question: str
     answer: str
     rag_retrieves: List[Document]
@@ -94,13 +94,14 @@ class RagGraph:
         self.llm_processor = llm_processor
         self.rag_retriever = rag_retriever
         self.web_retriever = web_retriever
+        self.memory = MemorySaver()
         self.graph = None
         self.logger = logging.getLogger(__name__)
 
     def compile(self) -> StateGraph:
         if not self.graph:
             self.graph = self.__build_graph()
-        return self.graph.compile()
+        return self.graph.compile(checkpointer=self.memory)
 
     def invoke(self, state: RagState) -> RagState:
         if not self.graph:
@@ -186,7 +187,24 @@ class RagGraph:
         return new_state
 
     def __node_rewrite_question_start(self, state: RagState) -> RagState:
-        question = state["question"]
+        messages = state["messages"]
+        last_message = messages[-1:] # Get the last message
+
+        print(f"[rewrite_question_start] messages: {len(messages)}")
+        print(f"[rewrite_question_start] messages: {messages}")
+
+
+        # Check if the last message is a human message
+        human_texts = [m.content for m in last_message if isinstance(m, HumanMessage)]
+        question = "\n".join(human_texts).strip()
+
+        # Check if the question is empty
+        if not question:
+            question = "请介绍保健产品对中老年人身体健康的好处有哪些。"
+        elif len(question) > 200:
+            question = question[:200]
+
+        print(f"[rewrite_question_start] question: {question}")
 
         thinking = (
             "📝 正在分析问题...\n"
@@ -195,7 +213,7 @@ class RagGraph:
             "请稍后..."
         )
 
-        new_state = {"thinking": thinking}
+        new_state = {"thinking": thinking, "question": question}
         return new_state
 
     def __node_rewrite_question(self, state: RagState) -> RagState:
