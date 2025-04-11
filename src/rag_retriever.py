@@ -250,7 +250,7 @@ class RagRetriever:
         if self.search_type == "mmr":
             search_type = "mmr"
             search_kwargs = {
-                "k": int(self.search_result_num * 2),  # number of results to return
+                "k": int(self.search_result_num * 1.5),  # number of results to return
                 "score_threshold": self.score_threshold,
                 "fetch_k": int(self.search_result_num * 10),
                 "lambda_mult": 0.9,  # lambda value for MMR
@@ -258,7 +258,7 @@ class RagRetriever:
         else:
             search_type = "similarity_score_threshold"
             search_kwargs = {
-                "k": int(self.search_result_num * 2),
+                "k": int(self.search_result_num * 1.5),
                 "score_threshold": self.score_threshold,
             }
 
@@ -291,7 +291,7 @@ class RagRetriever:
             retrievers=[self.vector_retriever, self.bm25_retriever],
             weights=[0.7, 0.3],
             lmbda=0.9,
-            rerank_k=int(self.search_result_num * 2),
+            rerank_k=int(self.search_result_num * 1.5),
             return_sources=True,
             deduplicate=True,
         )

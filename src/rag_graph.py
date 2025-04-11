@@ -102,8 +102,11 @@ class RagGraph:
             self.search_result_num = config_data.get("retriever", {}).get(
                 "search_result_num", 3
             )
-            self.score_relevant = config_data.get("retriever", {}).get(
-                "rerank_score_relevant", 0.55
+            self.rerank_score_relevant = float(
+                config_data.get("retriever", {}).get("rerank_score_relevant", 0.55)
+            )
+            self.rerank_score_enable = config_data.get("retriever", {}).get(
+                "rerank_score_enable", "off"
             )
 
         self.llm_processor = llm_processor
@@ -197,7 +200,7 @@ class RagGraph:
     ## Nodes functions
     ############################################################################
     def __node_start(self, state: RagState) -> RagState:
-        if state["summary"]:
+        if state.get("summary"):
             print(f"[start] {len(state['summary'])} historical summary")
 
         thinking = "💡 你好，我是健康保健专家，我现在根据你的问题进行专业的分析和回答。请稍后..."
@@ -212,7 +215,7 @@ class RagGraph:
         return new_state
 
     def __node_rewrite_question_start(self, state: RagState) -> RagState:
-        question = state["question"]
+        question = state.get("question")
 
         if not question:
             question = "请介绍保健产品对中老年人身体健康的好处有哪些。"
@@ -234,7 +237,7 @@ class RagGraph:
         return new_state
 
     def __node_rewrite_question(self, state: RagState) -> RagState:
-        question = state["question"]
+        question = state.get("question")
         print(f"[rewrite_question] question: {question}")
 
         # Re-write question
@@ -254,7 +257,7 @@ class RagGraph:
         return new_state
 
     def __node_rag_retrieve(self, state: RagState) -> RagState:
-        question = state["question"]
+        question = state.get("question")
 
         # Retrieval
         # rag_retrieves = self.rag_retriever.query_rerank(question)
@@ -274,23 +277,29 @@ class RagGraph:
         return new_state
 
     def __node_rag_retrieve_grade(self, state: RagState) -> RagState:
-        question = state["question"]
-        rag_retrieves = state["rag_retrieves"]
+        question = state.get("question")
+        rag_retrieves = state.get("rag_retrieves", [])
         content_size_min = 50
 
         # Filter relevant retrieves
         relevants_with_score = []
         for doc in rag_retrieves:
             print(f"=== RAG retrieve score === ")
-            print(doc.page_content[:200])
-            score = self.rag_retriever.query_score(
-                question=question, context=doc.page_content
-            )
+            # print(doc.page_content[:80])
+            print(f"retrieve doc len {len(doc.page_content)}")
+
+            if self.rerank_score_enable == "on":
+                score = self.rag_retriever.query_score(
+                    question=question, context=doc.page_content
+                )
+            else:
+                score = self.rerank_score_relevant
 
             if len(doc.page_content) < content_size_min:
                 score = score * 0.8
 
-            if score < self.score_relevant:
+            score = round(score, 2)
+            if score < self.rerank_score_relevant:
                 print(f"[rag_retrieve_grade] relevant score: {score} is low")
                 continue
 
@@ -320,13 +329,13 @@ class RagGraph:
         return new_state
 
     def __node_web_retrieve(self, state: RagState) -> RagState:
-        question = state["question"]
+        question = state.get("question")
 
         # Web search
         web_retrieves = self.web_retriever.invoke(question)
         for doc in web_retrieves:
             print("=== web retrieve === ")
-            print(doc.page_content[:200])
+            print(doc.page_content[:50])
 
         thinking = f"🌐 已经检索到{len(web_retrieves)}份最新数据。"
         new_state = {
@@ -342,10 +351,9 @@ class RagGraph:
         return new_state
 
     def __node_generate_answer(self, state: RagState) -> RagState:
-        question = state["question"]
-        rag_retrieves = state.get("rag_retrieves", None)
-        web_retrieves = state.get("web_retrieves", None)
-        web_retrieves = web_retrieves[:1]  # now only use one web content
+        question = state.get("question")
+        rag_retrieves = state.get("rag_retrieves", [])
+        web_retrieves = state.get("web_retrieves", [])
         summary_history = state.get("summary", [])
 
         rag_context = ""
@@ -361,8 +369,10 @@ class RagGraph:
             web_context += "\n".join([doc.page_content for doc in web_retrieves])
 
         # Generate summary
+        history_num = 0
         if summary_history:
-            history = "---\n".join(summary_history)
+            history_num = len(summary_history)
+            history = "\n\n---\n\n".join(summary_history)
         else:
             history = ""
 
@@ -377,11 +387,12 @@ class RagGraph:
         print(f"[generate_answer] question: {question}")
         print(f"[generate_answer] {rag_num} rag_retrieves")
         print(f"[generate_answer] {web_num} web_retrieves")
+        print(f"[generate_answer] {history_num} summary_history")
 
         print(f"[generate_answer] answer: {generation}")
 
         thinking = "👨‍⚕️ 下面是保健专家的回答："
-        summary = f"## User question:\n{question}\n\n## AI answer:\n{generation}\n\n"
+        summary = f"User question:\n{question}\n\nAI answer:\n{generation}"
         new_state = {
             "thinking": thinking,
             "answer": generation,

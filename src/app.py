@@ -68,6 +68,7 @@ with open("config/config.toml", "rb") as f:
     deepseek_llm_model = config_data.get("deepseek", {}).get("model")
     deepseek_llm_temperature = config_data.get("deepseek", {}).get("temperature")
     deepseek_llm_max_tokens = config_data.get("deepseek", {}).get("max_tokens")
+    web_search_num = config_data.get("retriever", {}).get("web_search_num", 1)
 
 print("=== Init Config ===")
 print(f"model_name: {embed_model}")
@@ -110,7 +111,7 @@ rag_retriever = RagRetriever(
     collection_name=collection_name,
 )
 rag_retriever.load_index()
-web_retriever = TavilySearchAPIRetriever(api_key=tavily_api_key, k=1)
+web_retriever = TavilySearchAPIRetriever(api_key=tavily_api_key, k=web_search_num)
 
 # Create graph
 rag_graph = RagGraph(

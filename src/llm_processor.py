@@ -138,12 +138,19 @@ class LLMProcessor:
         user_profile = self.__user_profile()
         user_instruction = (
             "Answer the question based on the user's profile and the database context and web context provided.\n"
-            "1. Please focus on the database context to answer the question, but also refer to the web context.\n"
-            "2. If the database context does not provide enough information or is not relevant to the question, please answer based on web context and your knowledge.\n"
-            "3. Use a formal but friendly tone, and the simple and clear language.\n"
-            "4. Use the user's profile to adjust your tone and communication style.\n"
-            "5. The recommended length of the output string is between 50 and 200 characters.\n"
+            "1. Please base on the 'RAG Retrieve Context' to answer the question, but also refer to the 'Web Search Context'.\n"
+            "2. If the 'RAG Retrieve Context' does not provide enough information or is not relevant to the question, please answer based on your knowledge.\n"
+            "3. Please also refer to the information in the 'Historical User Questions and Answers'.\n"
+            "4. Use the user's profile to adjust your tone and communication style. Use a formal but friendly tone, and the simple and clear language\n"
+            "5. The recommended length of the output string is between 100 and 300 characters.\n"
             "6. Please answer questions from users in Chinese.\n"
+            "\n"
+            "Answer Rules:\n"
+            "1.  **Recommendation:** Clearly state whether you recommend the product based on the user's question and available information."
+            "2.  **Reason for Recommendation:** Explain *why* you are recommending this specific product. Connect it directly to the user's implied needs or explicit statements in their question.\n"
+            "3.  **Product Advantages:** List the key advantages and features of the product that make it suitable for the user.\n"
+            "4.  **Relevance to Customer:** Explicitly explain how the product relates to the customer's potential needs, preferences, or any information they have provided (even implicitly).\n"
+            "5.  **Logic and Reasoning:** Briefly explain the logical steps you took to arrive at your recommendation. Explain *why* the advantages you listed are important and how they address the user's potential needs. This will help the user understand your reasoning and build trust in your recommendations.\n"
         )
 
         prompt = ChatPromptTemplate.from_messages(
@@ -158,8 +165,8 @@ class LLMProcessor:
                         f"{user_profile}\n\n"
                         f"{user_instruction}\n\n"
                         f"## User question:\n{{question}}\n\n"
-                        f"## Database Context:\n{{rag_context}}\n\n"
-                        f"## Web Context:\n{{web_context}}\n\n"
+                        f"## RAG Retrieve Context:\n{{rag_context}}\n\n"
+                        f"## Web Search Context:\n{{web_context}}\n\n"
                         f"## Historical User Questions and Answers:\n{{history}}"
                     ),
                 ),

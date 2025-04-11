@@ -22,8 +22,10 @@ split_chunk_size = 1000
 split_chunk_overlap = 150
 content_size_min = 50
 search_result_num = 3
-score_threshold = 0.55
-rerank_score_relevant = 0.2
+score_threshold = 0.7
+rerank_score_relevant = 0.3
+rerank_score_enable = "off"
+web_search_num = 2
 
 [chat]
 chat_history_count = 5
