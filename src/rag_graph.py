@@ -74,8 +74,9 @@ class RagState(TypedDict):
     question: str
     answer: str
     rag_retrieves: List[Document]
+    rag_completed: str
     web_retrieves: List[Document]
-    completed: Annotated[list, operator.add]
+    web_completed: str
     thinking: Annotated[str, operator.add]
     summary: Annotated[
         list, summary_reducer(chat_history_count - 1)
@@ -196,9 +197,6 @@ class RagGraph:
     ## Nodes functions
     ############################################################################
     def __node_start(self, state: RagState) -> RagState:
-        if state["completed"]:
-            state["completed"].clear()
-
         if state["summary"]:
             print(f"[start] {len(state['summary'])} historical summary")
 
@@ -206,7 +204,9 @@ class RagGraph:
         new_state = {
             "answer": "",
             "rag_retrieves": [],
+            "rag_completed": "",
             "web_retrieves": [],
+            "web_completed": "",
             "thinking": thinking,
         }
         return new_state
@@ -312,7 +312,7 @@ class RagGraph:
         return new_state
 
     def __node_rag_retrieve_finish(self, state: RagState) -> RagState:
-        return {"completed": ["rag"]}
+        return {"rag_completed": "completed"}
 
     def __node_web_retrieve_start(self, state: RagState) -> RagState:
         thinking = "🌐 正在检索最新数据，请稍后..."
@@ -332,7 +332,7 @@ class RagGraph:
         new_state = {
             "thinking": thinking,
             "web_retrieves": web_retrieves,
-            "completed": ["web"],
+            "web_completed": "completed",
         }
         return new_state
 
@@ -400,7 +400,10 @@ class RagGraph:
             return "failure"
 
     def __condition_complete(self, state: RagState) -> str:
-        if {"rag", "web"}.issubset(state.get("completed") or []):
+        if (
+            state.get("rag_completed") == "completed"
+            and state.get("web_completed") == "completed"
+        ):
             print("[condition_complete]: success")
             return "success"
         else:
