@@ -123,7 +123,9 @@ class LLMProcessor:
     ################################################################################
     ### Generate answer
     ################################################################################
-    def generate_answer(self, question: str, rag_context: str, web_context: str) -> str:
+    def generate_answer(
+        self, question: str, rag_context: str, web_context: str, history: str
+    ) -> str:
         llm = self.llm
         json_key = "answer"
 
@@ -152,7 +154,14 @@ class LLMProcessor:
                 ),
                 (
                     "human",
-                    f"{user_profile}\n\n{user_instruction}\n\n## User question:\n{{question}}\n\nn## Database Context:\n\n {{rag_context}}\n\n## Web Context:\n\n {{web_context}}",
+                    (
+                        f"{user_profile}\n\n"
+                        f"{user_instruction}\n\n"
+                        f"## User question:\n{{question}}\n\n"
+                        f"## Database Context:\n{{rag_context}}\n\n"
+                        f"## Web Context:\n{{web_context}}\n\n"
+                        f"## Historical User Questions and Answers:\n{{history}}"
+                    ),
                 ),
             ]
         )
@@ -167,6 +176,7 @@ class LLMProcessor:
                     "question": question,
                     "rag_context": rag_context,
                     "web_context": web_context,
+                    "history": history,
                 }
             )
 

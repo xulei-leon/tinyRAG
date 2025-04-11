@@ -8,7 +8,6 @@ import tomllib
 # langchain
 from langchain_deepseek import ChatDeepSeek
 from langchain_community.retrievers import TavilySearchAPIRetriever
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 
 # my modules
 from rag_graph import RagGraph
@@ -32,11 +31,9 @@ def run_conversation(user_input, chat_history):
     chat_history.append((user_input, ""))
     full_response = []
 
+    inputs = {"question": user_input}
     config = {"configurable": {"thread_id": thread_id}}
-    input_message = [HumanMessage(content=user_input)]
-    input_message[0].pretty_print()
-
-    for chunk in stream_response({"messages": input_message}, config):
+    for chunk in stream_response(inputs, config):
         full_response.append(chunk)
         chat_history[-1] = (user_input, "\n\n".join(full_response))
         yield "", chat_history

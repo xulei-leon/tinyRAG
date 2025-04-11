@@ -25,3 +25,5 @@ search_result_num = 3
 score_threshold = 0.55
 rerank_score_relevant = 0.2
 
+[chat]
+chat_history_count = 5

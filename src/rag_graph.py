@@ -52,20 +52,34 @@ from langgraph.checkpoint.memory import MemorySaver, InMemorySaver
 from rag_retriever import RagRetriever
 from llm_processor import LLMProcessor
 
-# TODO list
-# Parallel processing of multiple retrieve
+
+def summary_reducer(n):
+    """Returns a reducer function that keeps only the last n elements."""
+
+    def reducer(old, new):
+        return (old or [])[-n:] + (new or [])[-n:]
+
+    return reducer
+
+
+with open("config/config.toml", "rb") as f:
+    config_data = tomllib.load(f)
+    chat_history_count = config_data.get("chat", {}).get("chat_history_count", 3)
 
 
 #
 # RAG state
 #
-class RagState(MessagesState):
+class RagState(TypedDict):
     question: str
     answer: str
     rag_retrieves: List[Document]
     web_retrieves: List[Document]
     completed: Annotated[list, operator.add]
     thinking: Annotated[str, operator.add]
+    summary: Annotated[
+        list, summary_reducer(chat_history_count - 1)
+    ]  # save summary for history
 
 
 #
@@ -182,26 +196,29 @@ class RagGraph:
     ## Nodes functions
     ############################################################################
     def __node_start(self, state: RagState) -> RagState:
+        if state["completed"]:
+            state["completed"].clear()
+
+        if state["summary"]:
+            print(f"[start] {len(state['summary'])} historical summary")
+
         thinking = "💡 你好，我是健康保健专家，我现在根据你的问题进行专业的分析和回答。请稍后..."
-        new_state = {"thinking": thinking}
+        new_state = {
+            "answer": "",
+            "rag_retrieves": [],
+            "web_retrieves": [],
+            "thinking": thinking,
+        }
         return new_state
 
     def __node_rewrite_question_start(self, state: RagState) -> RagState:
-        messages = state["messages"]
-        last_message = messages[-1:] # Get the last message
+        question = state["question"]
 
-        print(f"[rewrite_question_start] messages: {len(messages)}")
-        print(f"[rewrite_question_start] messages: {messages}")
-
-
-        # Check if the last message is a human message
-        human_texts = [m.content for m in last_message if isinstance(m, HumanMessage)]
-        question = "\n".join(human_texts).strip()
-
-        # Check if the question is empty
         if not question:
             question = "请介绍保健产品对中老年人身体健康的好处有哪些。"
-        elif len(question) > 200:
+
+        question = question.strip()
+        if len(question) > 200:
             question = question[:200]
 
         print(f"[rewrite_question_start] question: {question}")
@@ -329,6 +346,7 @@ class RagGraph:
         rag_retrieves = state.get("rag_retrieves", None)
         web_retrieves = state.get("web_retrieves", None)
         web_retrieves = web_retrieves[:1]  # now only use one web content
+        summary_history = state.get("summary", [])
 
         rag_context = ""
         rag_num = 0
@@ -342,11 +360,18 @@ class RagGraph:
             web_num = len(web_retrieves)
             web_context += "\n".join([doc.page_content for doc in web_retrieves])
 
+        # Generate summary
+        if summary_history:
+            history = "---\n".join(summary_history)
+        else:
+            history = ""
+
         # Generation
         generation = self.llm_processor.generate_answer(
             question=question,
             rag_context=rag_context,
             web_context=web_context,
+            history=history,
         )
 
         print(f"[generate_answer] question: {question}")
@@ -356,9 +381,11 @@ class RagGraph:
         print(f"[generate_answer] answer: {generation}")
 
         thinking = "👨‍⚕️ 下面是保健专家的回答："
+        summary = f"## User question:\n{question}\n\n## AI answer:\n{generation}\n\n"
         new_state = {
             "thinking": thinking,
             "answer": generation,
+            "summary": [summary],
         }
         return new_state
 
