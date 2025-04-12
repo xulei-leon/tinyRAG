@@ -272,8 +272,12 @@ class RagGraph:
         return new_state
 
     def __node_rag_retrieve_grade_start(self, state: RagState) -> RagState:
-        thinking = "📚 正在分析检索资料。请稍后..."
-        new_state = {"thinking": thinking}
+        if self.rerank_score_enable == "on":
+            thinking = "📚 正在分析检索资料。请稍后..."
+            new_state = {"thinking": thinking}
+        else:
+            new_state = {}
+
         return new_state
 
     def __node_rag_retrieve_grade(self, state: RagState) -> RagState:
@@ -313,11 +317,15 @@ class RagGraph:
                 doc[0] for doc in relevants_with_score[: self.search_result_num]
             ]
 
-        thinking = f"📚 已经分析有{len(rag_retrieves)}份资料与您的问题相关。"
-        new_state = {
-            "thinking": thinking,
-            "rag_retrieves": rag_retrieves,
-        }
+        if self.rerank_score_enable == "on":
+            thinking = f"📚 已经分析有{len(rag_retrieves)}份资料与您的问题相关。"
+            new_state = {
+                "thinking": thinking,
+                "rag_retrieves": rag_retrieves,
+            }
+        else:
+            new_state = {"rag_retrieves": rag_retrieves}
+
         return new_state
 
     def __node_rag_retrieve_finish(self, state: RagState) -> RagState:
@@ -335,7 +343,7 @@ class RagGraph:
         web_retrieves = self.web_retriever.invoke(question)
         for doc in web_retrieves:
             print("=== web retrieve === ")
-            print(doc.page_content[:50])
+            # print(doc.page_content[:50])
 
         thinking = f"🌐 已经检索到{len(web_retrieves)}份最新数据。"
         new_state = {

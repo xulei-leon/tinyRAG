@@ -18,6 +18,9 @@ from llm_processor import LLMProcessor
 def stream_response(inputs, config):
     for output in rag_app.stream(inputs, config):
         for node_name, node_state in output.items():
+            if not node_state:
+                continue
+
             if node_state.get("thinking"):
                 yield ">" + node_state["thinking"]
 
