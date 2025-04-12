@@ -28,4 +28,5 @@ rerank_score_enable = "off"
 web_search_num = 2
 
 [chat]
+chat_agent_name = "CalerieLife健康专家👨‍⚕️"
 chat_history_count = 5

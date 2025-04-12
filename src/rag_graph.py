@@ -108,6 +108,7 @@ class RagGraph:
             self.rerank_score_enable = config_data.get("retriever", {}).get(
                 "rerank_score_enable", "off"
             )
+            self.chat_agent_name = config_data.get("chat", {}).get("chat_agent_name")
 
         self.llm_processor = llm_processor
         self.rag_retriever = rag_retriever
@@ -203,7 +204,7 @@ class RagGraph:
         if state.get("summary"):
             print(f"[start] {len(state['summary'])} historical summary")
 
-        thinking = "💡 你好，我是健康保健专家，我现在根据你的问题进行专业的分析和回答。请稍后..."
+        thinking = f"💡 你好，我是{self.chat_agent_name}，我现在根据你的问题进行专业的分析和回答。请稍后..."
         new_state = {
             "answer": "",
             "rag_retrieves": [],
@@ -399,7 +400,7 @@ class RagGraph:
 
         print(f"[generate_answer] answer: {generation}")
 
-        thinking = "👨‍⚕️ 下面是保健专家的回答："
+        thinking = f"下面是{self.chat_agent_name}的回答："
         summary = f"User question:\n{question}\n\nAI answer:\n{generation}"
         new_state = {
             "thinking": thinking,

@@ -45,9 +45,22 @@ def run_conversation(user_input, chat_history):
     yield "", chat_history
 
 
+with open("config/config.toml", "rb") as f:
+    config_data = tomllib.load(f)
+    embed_model = config_data.get("huggingface", {}).get("embed_model")
+    reranker_model = config_data.get("huggingface", {}).get("reranker_model")
+    files_directory = config_data.get("vector", {}).get("files_directory")
+    persist_directory = config_data.get("vector", {}).get("persist_directory")
+    collection_name = config_data.get("vector", {}).get("collection_name")
+    deepseek_llm_model = config_data.get("deepseek", {}).get("model")
+    deepseek_llm_temperature = config_data.get("deepseek", {}).get("temperature")
+    deepseek_llm_max_tokens = config_data.get("deepseek", {}).get("max_tokens")
+    web_search_num = config_data.get("retriever", {}).get("web_search_num", 1)
+    chat_agent_name = config_data.get("chat", {}).get("chat_agent_name")
+
 # Create a Gradio interface
 with gr.Blocks() as agent:
-    gr.Markdown("# CalerieLife健康专家")
+    gr.Markdown("#" + chat_agent_name)
     chatbot = gr.Chatbot(type="tuples")
 
     msg = gr.Textbox()
@@ -61,17 +74,6 @@ deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
 tavily_api_key = os.getenv("TAVILY_API_KEY")
 linkup_api_key = os.getenv("LINKUP_API_KEY")
 
-with open("config/config.toml", "rb") as f:
-    config_data = tomllib.load(f)
-    embed_model = config_data.get("huggingface", {}).get("embed_model")
-    reranker_model = config_data.get("huggingface", {}).get("reranker_model")
-    files_directory = config_data.get("vector", {}).get("files_directory")
-    persist_directory = config_data.get("vector", {}).get("persist_directory")
-    collection_name = config_data.get("vector", {}).get("collection_name")
-    deepseek_llm_model = config_data.get("deepseek", {}).get("model")
-    deepseek_llm_temperature = config_data.get("deepseek", {}).get("temperature")
-    deepseek_llm_max_tokens = config_data.get("deepseek", {}).get("max_tokens")
-    web_search_num = config_data.get("retriever", {}).get("web_search_num", 1)
 
 print("=== Init Config ===")
 print(f"model_name: {embed_model}")
