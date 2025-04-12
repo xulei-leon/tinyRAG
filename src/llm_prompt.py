@@ -1,4 +1,12 @@
+import tomllib
+import json
+import logging
+
+
 class LLMPrompt:
+
+    def __init__(self):
+        self.health_prescription = self.__load_health_prescription()
 
     @classmethod
     def json_output_format(cls, json_key: str) -> str:
@@ -85,3 +93,58 @@ class LLMPrompt:
             "6. The recommended length of the output string is between 100 and 300 characters.\n"
             "7. Please answer questions from users in Chinese.\n"
         )
+
+    def generate_answer_prescription(self) -> str:
+        health_prescription = self.health_prescription
+        if not health_prescription:
+            return "None"
+
+        prescription_text = ""
+        for key, value in health_prescription.items():
+            prescription_text += (
+                "---\n"
+                f"Health problems: [{key}]\n"
+                f"Recommended health supplements: {value}\n"
+            )
+
+        return prescription_text
+
+    #################################################################################
+    ### Internal mothods
+    #################################################################################
+    @classmethod
+    def __load_health_prescription(cls):
+        health_prescription_file = None
+        with open("config/config.toml", "rb") as f:
+            config_data = tomllib.load(f)
+            health_prescription_file = config_data.get("database", {}).get(
+                "health_prescription_file", None
+            )
+        if not health_prescription_file:
+            return None
+
+        file_r = None
+        try:
+            with open(health_prescription_file, "r", encoding="utf-8") as f:
+                file_r = f.read()
+        except FileNotFoundError:
+            logging.error(
+                f"Health prescription file not found: {health_prescription_file}"
+            )
+            return None
+        except IOError as e:
+            logging.error(f"Error reading health prescription file: {e}")
+            return None
+            file_r = f.read()
+        if not file_r:
+            logging.error("Failed to load health prescription file.")
+            return None
+
+        try:
+            health_prescription = json.loads(file_r)
+        except json.JSONDecodeError:
+            logging.error("Failed to parse health prescription file.")
+            return None
+
+        logging.info("Health prescription file loaded successfully.")
+        return health_prescription

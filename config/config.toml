@@ -30,3 +30,6 @@ web_search_num = 2
 [chat]
 chat_agent_name = "CalerieLife健康专家👨‍⚕️"
 chat_history_count = 5
+
+[database]
+health_prescription_file = "/app/var/database/health_prescription.json"

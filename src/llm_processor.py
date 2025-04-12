@@ -40,6 +40,7 @@ class LLMProcessor:
 
     def __init__(self, llm: ChatDeepSeek):
         self.llm = llm
+        self.llm_prompt = LLMPrompt()
 
     ################################################################################
     ### Question re-writer
@@ -48,10 +49,10 @@ class LLMProcessor:
         llm = self.llm
         json_key = "rewrite_question"
 
-        system_role = LLMPrompt.rewrite_question_role()
-        system_instruction = LLMPrompt.rewrite_question_output()
-        system_response_format = LLMPrompt.json_output_format(json_key=json_key)
-        user_instruction = LLMPrompt.rewrite_question_instruction()
+        system_role = self.llm_prompt.rewrite_question_role()
+        system_instruction = self.llm_prompt.rewrite_question_output()
+        system_response_format = self.llm_prompt.json_output_format(json_key=json_key)
+        user_instruction = self.llm_prompt.rewrite_question_instruction()
 
         prompt = ChatPromptTemplate.from_messages(
             [
@@ -88,11 +89,12 @@ class LLMProcessor:
         llm = self.llm
         json_key = "answer"
 
-        system_role = LLMPrompt.generate_answer_role()
-        system_instruction = LLMPrompt.generate_answer_output()
-        system_response_format = LLMPrompt.json_output_format(json_key=json_key)
-        user_profile = LLMPrompt.user_profile()
-        user_instruction = LLMPrompt.generate_answer_instruction()
+        system_role = self.llm_prompt.generate_answer_role()
+        system_instruction = self.llm_prompt.generate_answer_output()
+        system_response_format = self.llm_prompt.json_output_format(json_key=json_key)
+        user_profile = self.llm_prompt.user_profile()
+        user_instruction = self.llm_prompt.generate_answer_instruction()
+        health_prescription = self.llm_prompt.generate_answer_prescription()
 
         prompt = ChatPromptTemplate.from_messages(
             [
@@ -108,6 +110,7 @@ class LLMProcessor:
                         f"## User question:\n{{question}}\n\n"
                         f"## RAG Retrieve Context:\n{{rag_context}}\n\n"
                         f"## Web Search Context:\n{{web_context}}\n\n"
+                        f"## Health Prescriptions:\n{{health_prescription}}\n\n"
                         f"## Historical User Questions and Answers:\n{{history}}"
                     ),
                 ),
@@ -124,6 +127,7 @@ class LLMProcessor:
                     "question": question,
                     "rag_context": rag_context,
                     "web_context": web_context,
+                    "health_prescription": health_prescription,
                     "history": history,
                 }
             )

@@ -163,7 +163,7 @@ class RagRetriever:
             return 0.0
 
     ###############################################################################
-    # Inteload_filesions
+    # Internal methods
     ###############################################################################
     def __load_files(self, file_paths: List[str]) -> List[Document]:
         documents = []
