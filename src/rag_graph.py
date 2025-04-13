@@ -265,9 +265,13 @@ class RagGraph:
         question = state.get("question")
 
         # Retrieval
-        # rag_retrieves = self.rag_retriever.query_rerank(question)
-        rag_retrieves = self.rag_retriever.query(question)
-        print(f"[rag_retrieve] rag retrieve number: {len(rag_retrieves)}")
+        try:
+            # rag_retrieves = self.rag_retriever.query_rerank(question)
+            rag_retrieves = self.rag_retriever.query(question)
+            print(f"[rag_retrieve] rag retrieve number: {len(rag_retrieves)}")
+        except Exception as e:
+            print(f"[rag_retrieve] rag retrieve error: {e}")
+            rag_retrieves = []
 
         thinking = f"🔍 已经检索到{len(rag_retrieves)}份产品资料。"
         new_state = {
@@ -345,10 +349,15 @@ class RagGraph:
         question = state.get("question")
 
         # Web search
-        web_retrieves = self.web_retriever.invoke(question)
-        for doc in web_retrieves:
-            print("=== web retrieve === ")
-            # print(doc.page_content[:50])
+        try:
+            web_retrieves = self.web_retriever.invoke(question)
+        except Exception as e:
+            print(f"[web_retrieve] web retrieve error: {e}")
+            web_retrieves = []
+
+        # for doc in web_retrieves:
+        #     print("=== web retrieve === ")
+        #     print(doc.page_content[:50])
 
         thinking = f"🌐 已经检索到{len(web_retrieves)}份最新数据。"
         new_state = {
