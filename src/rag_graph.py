@@ -204,7 +204,7 @@ class RagGraph:
         if state.get("summary"):
             print(f"[start] {len(state['summary'])} historical summary")
 
-        thinking = f"💡 你好，我是{self.chat_agent_name}，我现在根据你的问题进行专业的分析和回答。请稍后..."
+        thinking = f"💡 你好，我是{self.chat_agent_name}，我现在对你的问题进行专业的分析。请稍后..."
         new_state = {
             "answer": "",
             "rag_retrieves": [],
@@ -229,9 +229,9 @@ class RagGraph:
 
         thinking = (
             "📝 正在分析问题...\n"
-            "优化问题是为了更好地理解和回答你的问题。\n"
-            f"原问题: {question}\n"
-            "请稍后..."
+            # "优化问题是为了更好地理解和回答你的问题。\n"
+            # f"原问题: {question}\n"
+            # "请稍后..."
         )
 
         new_state = {"thinking": thinking, "question": question}
@@ -249,12 +249,16 @@ class RagGraph:
         print(f"[rewrite_question] rewite question: {rewrite_question}")
 
         thinking = f"📝 优化后问题: {rewrite_question}"
-        new_state = {"thinking": thinking, "question": rewrite_question}
+        new_state = {
+            # "thinking": thinking,
+            "question": rewrite_question,
+        }
         return new_state
 
     def __node_rag_retrieve_start(self, state: RagState) -> RagState:
         thinking = "🔍 正在检索专业资料和产品。请稍后..."
-        new_state = {"thinking": thinking}
+        # new_state = {"thinking": thinking}
+        new_state = {}
         return new_state
 
     def __node_rag_retrieve(self, state: RagState) -> RagState:
@@ -267,7 +271,7 @@ class RagGraph:
 
         thinking = f"🔍 已经检索到{len(rag_retrieves)}份产品资料。"
         new_state = {
-            "thinking": thinking,
+            # "thinking": thinking,
             "rag_retrieves": rag_retrieves,
         }
         return new_state
@@ -321,7 +325,7 @@ class RagGraph:
         if self.rerank_score_enable == "on":
             thinking = f"📚 已经分析有{len(rag_retrieves)}份资料与您的问题相关。"
             new_state = {
-                "thinking": thinking,
+                # "thinking": thinking,
                 "rag_retrieves": rag_retrieves,
             }
         else:
@@ -348,7 +352,7 @@ class RagGraph:
 
         thinking = f"🌐 已经检索到{len(web_retrieves)}份最新数据。"
         new_state = {
-            "thinking": thinking,
+            # "thinking": thinking,
             "web_retrieves": web_retrieves,
             "web_completed": "completed",
         }

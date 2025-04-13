@@ -60,14 +60,24 @@ with open("config/config.toml", "rb") as f:
 
 # Create a Gradio interface
 with gr.Blocks() as agent:
-    gr.Markdown("#" + chat_agent_name)
+    # gr.Markdown(f"# {chat_agent_name}")
+    gr.Markdown(
+        f"""
+        <div style="text-align: center;">
+            <h1>{chat_agent_name}</h1>
+        </div>
+        """
+    )
     chatbot = gr.Chatbot(type="tuples")
 
     msg = gr.Textbox()
-    clear = gr.Button("Clear")
+    send = gr.Button("发送问题")
+    # clear = gr.Button("清除对话")
 
     msg.submit(run_conversation, [msg, chatbot], [msg, chatbot])
-    clear.click(lambda: None, None, chatbot, queue=False)
+    # clear.click(lambda: None, None, chatbot, queue=False)
+    send.click(run_conversation, [msg, chatbot], [msg, chatbot])
+
 
 load_dotenv()
 deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
@@ -136,7 +146,7 @@ listen = os.environ.get("GRADIO_LISTEN", "true").lower() == "true"
 # Launch the interface
 if __name__ == "__main__":
     if listen:
-        # agent.launch(pwa=True, share=True)
+        # agent.launch(share=True, server_name=server_name, server_port=port)
         agent.launch(server_name=server_name, server_port=port)
     else:
         print("Gradio server is configured not to listen.")
