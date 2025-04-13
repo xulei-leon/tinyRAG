@@ -204,7 +204,7 @@ class RagGraph:
         if state.get("summary"):
             print(f"[start] {len(state['summary'])} historical summary")
 
-        thinking = f"💡 你好，我是{self.chat_agent_name}，我现在对你的问题进行专业的分析。请稍后..."
+        thinking = f"💡 你好，我是{self.chat_agent_name}，我现在对你的问题进行专业的分析，请稍候..."
         new_state = {
             "answer": "",
             "rag_retrieves": [],
@@ -228,10 +228,9 @@ class RagGraph:
         print(f"[rewrite_question_start] question: {question}")
 
         thinking = (
-            "📝 正在分析问题...\n"
+            "📝 正在分析和优化问题，请稍候...\n"
             # "优化问题是为了更好地理解和回答你的问题。\n"
             # f"原问题: {question}\n"
-            # "请稍后..."
         )
 
         new_state = {"thinking": thinking, "question": question}
@@ -256,9 +255,8 @@ class RagGraph:
         return new_state
 
     def __node_rag_retrieve_start(self, state: RagState) -> RagState:
-        thinking = "🔍 正在检索专业资料和产品。请稍后..."
-        # new_state = {"thinking": thinking}
-        new_state = {}
+        thinking = "🔍 正在检索专业资料和产品。请稍候..."
+        new_state = {"thinking": thinking}
         return new_state
 
     def __node_rag_retrieve(self, state: RagState) -> RagState:
@@ -282,7 +280,7 @@ class RagGraph:
 
     def __node_rag_retrieve_grade_start(self, state: RagState) -> RagState:
         if self.rerank_score_enable == "on":
-            thinking = "📚 正在分析检索资料。请稍后..."
+            thinking = "📚 正在分析检索资料。请稍候..."
             new_state = {"thinking": thinking}
         else:
             new_state = {}
@@ -341,7 +339,7 @@ class RagGraph:
         return {"rag_completed": "completed"}
 
     def __node_web_retrieve_start(self, state: RagState) -> RagState:
-        thinking = "🌐 正在检索最新数据，请稍后..."
+        thinking = "🌐 正在检索最新数据，请稍候..."
         new_state = {"thinking": thinking}
         return new_state
 
@@ -368,7 +366,7 @@ class RagGraph:
         return new_state
 
     def __node_generate_answer_start(self, state: RagState) -> RagState:
-        thinking = "💡 正在生成答案。请稍后..."
+        thinking = "💡 正在生成答案，请稍候..."
         new_state = {"thinking": thinking}
         return new_state
 
@@ -416,7 +414,7 @@ class RagGraph:
         thinking = f"下面是{self.chat_agent_name}的回答："
         summary = f"User question:\n{question}\n\nAI answer:\n{generation}"
         new_state = {
-            "thinking": thinking,
+            # "thinking": thinking,
             "answer": generation,
             "summary": [summary],
         }
