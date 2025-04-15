@@ -42,6 +42,7 @@ RUN pip install pickle-mixin
 RUN pip install "unstructured[text, csv, markdown, json]"
 RUN pip install "langchain-unstructured[all-docs]"
 
+RUN pip install fastapi uvicorn watchfiles
 
 # Copy nltk data
 ENV NLTK_DATA=/nltk_data
@@ -69,10 +70,11 @@ COPY models /models
 #COPY . /app
 
 # Make port available to the world outside this container
-EXPOSE 8080
+EXPOSE 8000 8080
 
-# Run bash for debug
-# CMD ["bash"]
+# Make the script executable
+COPY run.sh run.sh
+RUN chmod +x run.sh
 
 # Run app when the container launches
-CMD ["python", "src/app.py"]
+CMD ["./run.sh"]
