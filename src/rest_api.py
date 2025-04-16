@@ -5,6 +5,11 @@ import os
 import uvicorn
 import asyncio
 from pydantic import BaseModel
+import json
+import tomllib
+
+# my modules
+from agent import Agent
 
 # Set the FastAPI listen port as an environment variable or default to 8000
 LISTEN_PORT = int(os.getenv("REST_API_PORT", 8000))
@@ -89,7 +94,9 @@ async def clear_users(users: List[UserProfile] = None):
     )
 
 
+###############################################################################
 # WebSocket for streaming output
+###############################################################################
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -111,14 +118,36 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-output = [
-    "Hello, this is a streaming message.",
-    "This is the second message.",
-    "And here comes the third message.",
-    "Streaming messages are fun!",
-    "This is the last message in the stream.",
-    "Goodbye!",
-]
+
+rag_app = Agent().get_app()
+
+
+def stream_response(inputs, config):
+    for output in rag_app.stream(inputs, config):
+        for node_name, node_state in output.items():
+            if not node_state:
+                continue
+
+            if node_state.get("thinking"):
+                json_response = {
+                    "thinking": node_state["thinking"],
+                }
+                yield json.dumps(json_response, ensure_ascii=False)
+
+            if node_state.get("answer"):
+                json_response = {
+                    "answer": node_state["answer"],
+                }
+                yield json.dumps(json_response, ensure_ascii=False)
+
+
+def run_conversation(user_input):
+    thread_id = "rest_api_test"
+
+    inputs = {"question": user_input}
+    config = {"configurable": {"thread_id": thread_id}}
+    for chunk in stream_response(inputs, config):
+        yield chunk
 
 
 @app.websocket("/chat")
@@ -127,14 +156,12 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             # Wait for a message from the client
-            data = await websocket.receive_text()
-            print(f"Received message: {data}")
+            user_input = await websocket.receive_text()
+            print(f"Received message: {user_input}")
 
-            for message in output:
-                # Simulate a delay to mimic streaming
-                # Send the message to the client
+            for message in run_conversation(user_input):
                 print(f"Sending message: {message}")
-                await manager.broadcast(f"Streaming item: {message}")
-                await asyncio.sleep(1)
+                await manager.broadcast(f"{message}")
+
     except WebSocketDisconnect:
         manager.disconnect(websocket)
