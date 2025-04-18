@@ -39,14 +39,18 @@ pip install torchvision --extra-index-url https://download.pytorch.org/whl/cpu
 pip install "unstructured[pdf, doc, docx, ppt, pptx]"
 ```
 
+```
+$ export PYTHONPATH=".:./src:$PYTHONPATH"
+```
+
 Create bm25 index from your documents files
 ```bash
-$ python src/rag_retriever.py --bm25 /app/downloads/files
+$ python scripts/build_kb.py --build_index /app/downloads/files
 ```
 
 Create vector index from your documents files
 ```bash
-$ python src/rag_retriever.py --vector /app/downloads/files
+$ python scripts/build_kb.py --build_vector /app/downloads/files
 ```
 
 
