@@ -61,6 +61,7 @@ COPY nltk_data ${NLTK_DATA}
 # Define environment variable
 ENV TRANSFORMERS_OFFLINE=1
 ENV HF_DATASETS_OFFLINE=1
+ENV PYTHONPATH=".:./src"
 
 # Copy the models from the previous image
 # COPY --from=builder /models /models

@@ -39,10 +39,6 @@ pip install torchvision --extra-index-url https://download.pytorch.org/whl/cpu
 pip install "unstructured[pdf, doc, docx, ppt, pptx]"
 ```
 
-```
-$ export PYTHONPATH=".:./src:$PYTHONPATH"
-```
-
 Create bm25 index from your documents files
 ```bash
 $ python scripts/build_kb.py --build_index /app/downloads/files
